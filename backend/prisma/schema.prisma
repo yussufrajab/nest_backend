@@ -1,0 +1,282 @@
+generator client {
+  provider = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Institution {
+  id             String    @id
+  name           String    @unique
+  email          String?
+  phoneNumber    String?
+  voteNumber     String?
+  tinNumber      String?   @unique
+  users          User[]
+  employees      Employee[]
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@map("institutions")
+}
+
+model User {
+  id             String         @id
+  name           String
+  username       String         @unique
+  password       String
+  role           String
+  active         Boolean        @default(true)
+  employeeId     String?        @unique
+  institutionId  String
+  phoneNumber    String?
+  email          String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  institution    Institution    @relation(fields: [institutionId], references: [id], onDelete: Restrict)
+  employee       Employee?      @relation(fields: [employeeId], references: [id], onDelete: SetNull)
+  submittedRequests  Request[]    @relation("SubmittedRequests")
+  reviewedRequests   Request[]    @relation("ReviewedRequests")
+  complaints     Complaint[]    @relation("Complainant")
+  reviewedComplaints  Complaint[]  @relation("Reviewer")
+  notifications  Notification[]
+  auditLogs      AuditLog[]
+  passwordResetTokens PasswordResetToken[]
+
+  @@map("users")
+}
+
+model Employee {
+  id                     String                @id
+  employeeEntityId       String?
+  name                   String
+  gender                 String
+  profileImageUrl        String?
+  dateOfBirth            DateTime?
+  placeOfBirth           String?
+  region                 String?
+  countryOfBirth         String?
+  zanId                  String                @unique
+  phoneNumber            String?
+  contactAddress         String?
+  zssfNumber             String?
+  payrollNumber          String?
+  cadre                  String?
+  salaryScale            String?
+  ministry               String?
+  department             String?
+  appointmentType        String?
+  contractType           String?
+  recentTitleDate        DateTime?
+  currentReportingOffice String?
+  currentWorkplace       String?
+  employmentDate         DateTime?
+  confirmationDate       DateTime?
+  retirementDate         DateTime?
+  status                 String?
+  ardhilHaliUrl          String?
+  confirmationLetterUrl  String?
+  jobContractUrl         String?
+  birthCertificateUrl    String?
+  institutionId          String
+  createdAt              DateTime              @default(now())
+  updatedAt              DateTime              @updatedAt
+  institution            Institution           @relation(fields: [institutionId], references: [id], onDelete: Restrict)
+  user                   User?
+  certificates           EmployeeCertificate[]
+  requests               Request[]
+
+  @@map("employees")
+}
+
+model EmployeeCertificate {
+  id          String    @id
+  type        String
+  name        String
+  url         String?
+  employeeId  String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  employee    Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@map("employee_certificates")
+}
+
+model Request {
+  id                String    @id
+  status            String
+  reviewStage       String
+  documents         String[]
+  rejectionReason   String?
+  employeeId        String
+  submittedById     String
+  reviewedById      String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  employee          Employee  @relation(fields: [employeeId], references: [id], onDelete: Restrict)
+  submittedBy       User      @relation("SubmittedRequests", fields: [submittedById], references: [id], onDelete: Restrict)
+  reviewedBy        User?     @relation("ReviewedRequests", fields: [reviewedById], references: [id], onDelete: SetNull)
+  confirmation       ConfirmationRequest?
+  promotion         PromotionRequest?
+  lwop             LwopRequest?
+  cadreChange       CadreChangeRequest?
+  retirement        RetirementRequest?
+  resignation      ResignationRequest?
+  serviceExtension  ServiceExtensionRequest?
+  separation       SeparationRequest?
+
+  @@map("requests")
+}
+
+model ConfirmationRequest {
+  id                        String    @id
+  decisionDate              DateTime?
+  commissionDecisionDate    DateTime?
+  requestId                 String    @unique
+  request                   Request   @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  @@map("confirmation_requests")
+}
+
+model PromotionRequest {
+  id                        String    @id
+  proposedCadre             String
+  promotionType             String
+  studiedOutsideCountry     Boolean?
+  commissionDecisionReason  String?
+  requestId                 String    @unique
+  request                   Request   @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  @@map("promotion_requests")
+}
+
+model LwopRequest {
+  id                String    @id
+  duration          String
+  reason            String
+  startDate         DateTime?
+  endDate           DateTime?
+  requestId         String    @unique
+  request           Request   @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  @@map("lwop_requests")
+}
+
+model CadreChangeRequest {
+  id                        String    @id
+  newCadre                  String
+  reason                    String?
+  studiedOutsideCountry     Boolean?
+  requestId                 String    @unique
+  request                   Request   @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  @@map("cadre_change_requests")
+}
+
+model RetirementRequest {
+  id                 String    @id
+  retirementType     String
+  illnessDescription String?
+  proposedDate       DateTime
+  delayReason        String?
+  requestId          String    @unique
+  request            Request   @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  @@map("retirement_requests")
+}
+
+model ResignationRequest {
+  id              String    @id
+  effectiveDate   DateTime
+  reason          String?
+  requestId       String    @unique
+  request         Request   @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  @@map("resignation_requests")
+}
+
+model ServiceExtensionRequest {
+  id                        String    @id
+  currentRetirementDate     DateTime
+  requestedExtensionPeriod  String
+  justification             String
+  requestId                 String    @unique
+  request                   Request   @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  @@map("service_extension_requests")
+}
+
+model SeparationRequest {
+  id              String    @id
+  type            String
+  reason          String
+  requestId       String    @unique
+  request         Request   @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  @@map("separation_requests")
+}
+
+model Complaint {
+  id                      String    @id
+  complaintType           String
+  subject                 String
+  details                 String
+  complainantPhoneNumber  String
+  nextOfKinPhoneNumber    String
+  attachments             String[]
+  status                  String
+  reviewStage             String
+  officerComments         String?
+  internalNotes           String?
+  rejectionReason         String?
+  complainantId           String
+  assignedOfficerRole     String
+  reviewedById            String?
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+  complainant             User      @relation("Complainant", fields: [complainantId], references: [id], onDelete: Restrict)
+  reviewedBy              User?     @relation("Reviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  @@map("complaints")
+}
+
+model Notification {
+  id          String    @id
+  message     String
+  link        String?
+  isRead      Boolean   @default(false)
+  userId      String
+  createdAt   DateTime  @default(now())
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}
+
+model AuditLog {
+  id          String    @id
+  action      String
+  entityType  String
+  entityId    String
+  userId      String?
+  changes     Json?
+  ipAddress   String?
+  createdAt   DateTime  @default(now())
+  user        User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@map("audit_logs")
+}
+
+model PasswordResetToken {
+  id          String    @id
+  userId      String
+  token       String    @unique
+  expiresAt   DateTime
+  isUsed      Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("password_reset_tokens")
+}
