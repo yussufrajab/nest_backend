@@ -60,9 +60,11 @@
 
   /* Button Styles */
   .btn-primary {
-    @apply bg-gradient-to-r from-primary-600 to-primary-500 hover:from-primary-700 hover:to-primary-600
-           text-white font-medium px-5 py-2.5 rounded-xl shadow-md shadow-primary-500/25
-           hover:shadow-lg hover:shadow-primary-500/30 active:scale-[0.98] transition-all duration-200;
+    @apply bg-gradient-to-r from-slate-50 via-blue-50 to-teal-50 border border-blue-200
+           text-blue-700 font-medium px-5 py-2.5 rounded-xl shadow-md shadow-blue-500/10
+           hover:from-blue-50 hover:via-blue-100 hover:to-teal-100 hover:border-blue-300
+           hover:text-blue-800 hover:shadow-lg hover:shadow-blue-500/20 active:scale-[0.98]
+           transition-all duration-200;
   }
 
   .btn-secondary {

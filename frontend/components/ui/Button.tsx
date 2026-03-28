@@ -12,10 +12,10 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     const baseStyles = 'inline-flex items-center justify-center font-medium rounded-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed';
 
     const variants = {
-      primary: 'bg-gradient-to-r from-primary-600 to-primary-500 hover:from-primary-700 hover:to-primary-600 text-white shadow-md shadow-primary-500/25 hover:shadow-lg hover:shadow-primary-500/30 active:scale-[0.98] focus:ring-primary-500',
+      primary: 'bg-gradient-to-r from-slate-50 via-blue-50 to-teal-50 border border-blue-200 text-blue-700 hover:from-blue-50 hover:via-blue-100 hover:to-teal-100 hover:border-blue-300 hover:text-blue-800 shadow-md shadow-blue-500/10 hover:shadow-lg hover:shadow-blue-500/20 active:scale-[0.98] focus:ring-blue-400',
       secondary: 'bg-white text-slate-700 border border-slate-200 shadow-sm shadow-slate-200/50 hover:bg-slate-50 hover:border-slate-300 hover:shadow-md active:scale-[0.98] focus:ring-slate-500',
-      ghost: 'text-slate-600 hover:text-primary-600 hover:bg-primary-50 focus:ring-primary-500',
-      danger: 'bg-gradient-to-r from-rose-600 to-rose-500 hover:from-rose-700 hover:to-rose-600 text-white shadow-md shadow-rose-500/25 hover:shadow-lg hover:shadow-rose-500/30 active:scale-[0.98] focus:ring-rose-500',
+      ghost: 'text-slate-600 hover:text-blue-600 hover:bg-blue-50 focus:ring-blue-500',
+      danger: 'bg-gradient-to-r from-rose-50 to-rose-100 border border-rose-200 text-rose-700 hover:from-rose-100 hover:to-rose-200 hover:border-rose-300 hover:text-rose-800 shadow-md shadow-rose-500/10 hover:shadow-lg hover:shadow-rose-500/20 active:scale-[0.98] focus:ring-rose-500',
     };
 
     const sizes = {
