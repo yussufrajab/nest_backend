@@ -2,77 +2,102 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useState } from 'react';
 import { useAuth } from '../hooks/use-auth';
+import {
+  LayoutDashboard,
+  Users,
+  Scale,
+  FileText,
+  BarChart3,
+  Settings,
+  UserCog,
+  Building2,
+  ClipboardList,
+  ChevronRight,
+  ChevronDown,
+  LogOut,
+  Shield,
+} from 'lucide-react';
+import { cn } from '../lib/utils';
 
 const Sidebar = () => {
   const pathname = usePathname();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const [requestsMenuOpen, setRequestsMenuOpen] = useState(true);
+  const [adminMenuOpen, setAdminMenuOpen] = useState(false);
+
+  const requestSubMenu = [
+    { title: 'Confirmation', href: '/requests/confirmation', roles: ['HRO', 'HRMO', 'HHRMD', 'HRRP'] },
+    { title: 'Promotion', href: '/requests/promotion', roles: ['HRO', 'HRMO', 'HHRMD', 'HRRP'] },
+    { title: 'LWOP', href: '/requests/lwop', roles: ['HRO', 'HRMO', 'HHRMD', 'HRRP'] },
+    { title: 'Cadre Change', href: '/requests/cadre-change', roles: ['HRO', 'HRMO', 'HHRMD', 'HRRP'] },
+    { title: 'Retirement', href: '/requests/retirement', roles: ['HRO', 'HRMO', 'HHRMD', 'HRRP'] },
+    { title: 'Resignation', href: '/requests/resignation', roles: ['HRO', 'HRMO', 'HHRMD', 'HRRP'] },
+    { title: 'Service Extension', href: '/requests/service-extension', roles: ['HRO', 'HRMO', 'HHRMD', 'HRRP'] },
+    { title: 'Separation', href: '/requests/separation', roles: ['HRO', 'HRMO', 'HHRMD', 'HRRP', 'DO'] },
+  ];
 
   const mainMenu = [
     {
       title: 'Dashboard',
       href: '/dashboard',
-      icon: '🏠',
+      icon: LayoutDashboard,
       roles: ['ADMIN', 'HHRMD', 'HRO', 'HRMO', 'DO', 'EMP', 'PO', 'CSCS', 'HRRP'],
     },
     {
       title: 'Employees',
       href: '/employees',
-      icon: '👥',
+      icon: Users,
       roles: ['ADMIN', 'HHRMD', 'HRO', 'HRMO', 'DO', 'EMP'],
     },
     {
       title: 'Complaints',
       href: '/complaints',
-      icon: '⚖️',
+      icon: Scale,
       roles: ['ADMIN', 'HHRMD', 'HRO', 'HRMO', 'DO', 'EMP', 'CSCS'],
     },
     {
       title: 'Requests',
       href: '/requests',
-      icon: '📝',
-      roles: ['ADMIN', 'HHRMD', 'HRO', 'HRMO', 'DO', 'EMP', 'PO'],
+      icon: FileText,
+      roles: ['ADMIN', 'HHRMD', 'HRO', 'HRMO', 'DO', 'EMP', 'PO', 'HRRP'],
+      children: requestSubMenu,
     },
     {
       title: 'Reports',
       href: '/reports',
-      icon: '📊',
+      icon: BarChart3,
       roles: ['ADMIN', 'HHRMD', 'HRO', 'HRMO', 'DO', 'CSCS', 'HRRP'],
     },
   ];
 
   const adminMenu = [
     {
-      title: 'Administration',
-      href: '/admin',
-      icon: '⚙️',
-      roles: ['ADMIN'],
-    },
-    {
       title: 'User Management',
       href: '/admin/users',
-      icon: '👤',
+      icon: UserCog,
       roles: ['ADMIN'],
     },
     {
       title: 'Institutions',
       href: '/admin/institutions',
-      icon: '🏛️',
+      icon: Building2,
       roles: ['ADMIN'],
     },
     {
       title: 'Audit Logs',
       href: '/admin/audit-logs',
-      icon: '📋',
+      icon: ClipboardList,
       roles: ['ADMIN'],
     },
   ];
 
   const filteredMainMenu = mainMenu.filter((item) =>
-    item.roles.includes(user?.role || 'EMP'),
+    item.roles.includes(user?.role || 'EMP')
   );
   const filteredAdminMenu = adminMenu.filter((item) =>
-    item.roles.includes(user?.role || 'EMP'),
+    item.roles.includes(user?.role || 'EMP')
   );
 
   const isActive = (href: string) => {
@@ -80,61 +105,166 @@ const Sidebar = () => {
     return pathname.startsWith(href);
   };
 
+  const canViewMenuItem = (roles: string[]) => {
+    return roles.includes(user?.role || 'EMP');
+  };
+
   return (
-    <div className="w-64 bg-white shadow-lg h-screen sticky top-0 overflow-y-auto">
-      <div className="p-6 border-b">
-        <h1 className="text-xl font-bold text-gray-900">Government HR</h1>
+    <div className="w-72 h-screen fixed left-0 top-0 bg-white border-r border-slate-200/60 flex flex-col shadow-lg shadow-slate-200/30 z-40">
+      {/* Header */}
+      <div className="p-6 border-b border-slate-100">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-accent-500 flex items-center justify-center shadow-md shadow-primary-500/20">
+            <Shield className="w-5 h-5 text-white" />
+          </div>
+          <div>
+            <h1 className="text-lg font-bold text-slate-800">CSMS</h1>
+            <p className="text-xs text-slate-500">Civil Service System</p>
+          </div>
+        </div>
       </div>
 
-      <nav className="p-4">
-        <div className="mb-8">
-          <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
+      {/* Navigation */}
+      <nav className="flex-1 overflow-y-auto py-4 px-3">
+        {/* Main Menu */}
+        <div className="mb-6">
+          <h2 className="px-3 text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
             Main Menu
           </h2>
-          <ul className="space-y-2">
-            {filteredMainMenu.map((item) => (
-              <li key={item.href}>
-                <Link
-                  href={item.href}
-                  className={`flex items-center gap-3 px-4 py-2 rounded-lg transition-colors ${
-                    isActive(item.href)
-                      ? 'bg-blue-100 text-blue-700'
-                      : 'text-gray-700 hover:bg-gray-100'
-                  }`}
-                >
-                  <span className="text-xl">{item.icon}</span>
-                  <span className="font-medium">{item.title}</span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        {filteredAdminMenu.length > 0 && (
-          <div>
-            <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
-              Administration
-            </h2>
-            <ul className="space-y-2">
-              {filteredAdminMenu.map((item) => (
+          <ul className="space-y-1">
+            {filteredMainMenu.map((item) => {
+              const Icon = item.icon;
+              if (item.children) {
+                const hasActiveChild = item.children.some(
+                  (child: any) => canViewMenuItem(child.roles) && isActive(child.href)
+                );
+                const visibleChildren = item.children.filter(
+                  (child: any) => canViewMenuItem(child.roles)
+                );
+                return (
+                  <li key={item.href}>
+                    <button
+                      onClick={() => setRequestsMenuOpen(!requestsMenuOpen)}
+                      className={cn(
+                        'w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl transition-all duration-200',
+                        isActive(item.href) || hasActiveChild
+                          ? 'text-primary-600 bg-primary-50 font-medium shadow-sm shadow-primary-500/10'
+                          : 'text-slate-600 hover:text-primary-600 hover:bg-slate-50'
+                      )}
+                    >
+                      <div className="flex items-center gap-3">
+                        <Icon className="w-5 h-5" />
+                        <span>{item.title}</span>
+                      </div>
+                      <ChevronDown
+                        className={cn(
+                          'w-4 h-4 transition-transform duration-200',
+                          requestsMenuOpen && 'rotate-180'
+                        )}
+                      />
+                    </button>
+                    <ul
+                      className={cn(
+                        'ml-4 mt-1 space-y-1 overflow-hidden transition-all duration-200',
+                        requestsMenuOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
+                      )}
+                    >
+                      {visibleChildren.map((child: any) => (
+                        <li key={child.href}>
+                          <Link
+                            href={child.href}
+                            className={cn(
+                              'flex items-center gap-2 px-3 py-2 text-sm rounded-lg transition-all duration-200',
+                              isActive(child.href)
+                                ? 'text-primary-600 bg-primary-50 font-medium'
+                                : 'text-slate-500 hover:text-primary-600 hover:bg-slate-50'
+                            )}
+                          >
+                            <ChevronRight className="w-3 h-3" />
+                            {child.title}
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </li>
+                );
+              }
+              return (
                 <li key={item.href}>
                   <Link
                     href={item.href}
-                    className={`flex items-center gap-3 px-4 py-2 rounded-lg transition-colors ${
+                    className={cn(
+                      'flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200',
                       isActive(item.href)
-                        ? 'bg-blue-100 text-blue-700'
-                        : 'text-gray-700 hover:bg-gray-100'
-                    }`}
+                        ? 'text-primary-600 bg-primary-50 font-medium shadow-sm shadow-primary-500/10'
+                        : 'text-slate-600 hover:text-primary-600 hover:bg-slate-50'
+                    )}
                   >
-                    <span className="text-xl">{item.icon}</span>
-                    <span className="font-medium">{item.title}</span>
+                    <Icon className="w-5 h-5" />
+                    <span>{item.title}</span>
                   </Link>
                 </li>
-              ))}
+              );
+            })}
+          </ul>
+        </div>
+
+        {/* Admin Menu */}
+        {filteredAdminMenu.length > 0 && (
+          <div className="mb-6">
+            <h2 className="px-3 text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
+              Administration
+            </h2>
+            <ul className="space-y-1">
+              {filteredAdminMenu.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <li key={item.href}>
+                    <Link
+                      href={item.href}
+                      className={cn(
+                        'flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200',
+                        isActive(item.href)
+                          ? 'text-primary-600 bg-primary-50 font-medium shadow-sm shadow-primary-500/10'
+                          : 'text-slate-600 hover:text-primary-600 hover:bg-slate-50'
+                      )}
+                    >
+                      <Icon className="w-5 h-5" />
+                      <span>{item.title}</span>
+                    </Link>
+                  </li>
+                );
+              })}
             </ul>
           </div>
         )}
       </nav>
+
+      {/* User Profile Footer */}
+      <div className="p-4 border-t border-slate-100">
+        <div className="bg-slate-50 rounded-xl p-3">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-white font-semibold shadow-md">
+              {user?.name?.charAt(0) || 'U'}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-slate-800 truncate">
+                {user?.name || 'User'}
+              </p>
+              <p className="text-xs text-slate-500 truncate">
+                {user?.role || 'Employee'}
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={logout}
+            className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm text-slate-600 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors duration-200"
+          >
+            <LogOut className="w-4 h-4" />
+            Sign Out
+          </button>
+        </div>
+      </div>
     </div>
   );
 };

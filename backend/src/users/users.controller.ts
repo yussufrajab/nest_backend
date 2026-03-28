@@ -6,10 +6,12 @@ import {
   Delete,
   Body,
   Param,
+  Query,
   UseGuards,
   ParseUUIDPipe,
   HttpCode,
   HttpStatus,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
@@ -25,8 +27,14 @@ export class UsersController {
 
   @Get()
   @Roles('ADMIN', 'HHRMD')
-  async findAll() {
-    return this.usersService.findAll();
+  async findAll(
+    @Query('page', new ParseIntPipe({ optional: true })) page: number = 1,
+    @Query('limit', new ParseIntPipe({ optional: true })) limit: number = 10,
+    @Query('role') role?: string,
+    @Query('institutionId') institutionId?: string,
+    @Query('search') search?: string,
+  ) {
+    return this.usersService.findAll({ page, limit, role, institutionId, search });
   }
 
   @Get(':id')

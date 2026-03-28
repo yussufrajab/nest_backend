@@ -54,6 +54,7 @@ model Employee {
   employeeEntityId       String?
   name                   String
   gender                 String
+  photo                  String?
   profileImageUrl        String?
   dateOfBirth            DateTime?
   placeOfBirth           String?
@@ -133,7 +134,8 @@ model Request {
 
 model ConfirmationRequest {
   id                        String    @id
-  decisionDate              DateTime?
+  proposedConfirmationDate  DateTime?
+  notes                     String?
   commissionDecisionDate    DateTime?
   requestId                 String    @unique
   request                   Request   @relation(fields: [requestId], references: [id], onDelete: Cascade)

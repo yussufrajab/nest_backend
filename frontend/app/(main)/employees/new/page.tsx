@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { employeeService } from '../../../../services/employeeService';
+import { adminService } from '../../../../services/adminService';
 import type { CreateEmployeeDto } from '../../../../types/employee';
 
 export default function NewEmployeePage() {
@@ -35,7 +36,7 @@ export default function NewEmployeePage() {
     employmentDate: '',
     confirmationDate: '',
     retirementDate: '',
-    status: 'Active',
+    status: 'On Probation',
     institutionId: '',
   });
 
@@ -46,12 +47,13 @@ export default function NewEmployeePage() {
   }, []);
 
   const loadInstitutions = async () => {
-    // TODO: Load from institutions service
-    setInstitutions([
-      { id: '1', name: 'Ministry of Public Service' },
-      { id: '2', name: 'Ministry of Health' },
-      { id: '3', name: 'Ministry of Education' },
-    ]);
+    try {
+      const result = await adminService.getInstitutions({ limit: 100 });
+      setInstitutions(result.institutions || []);
+    } catch (error) {
+      console.error('Error loading institutions:', error);
+      setInstitutions([]);
+    }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -312,10 +314,13 @@ export default function NewEmployeePage() {
                   value={formData.status}
                   onChange={handleChange}
                   options={[
-                    { value: 'Active', label: 'Active' },
-                    { value: 'Inactive', label: 'Inactive' },
+                    { value: 'On Probation', label: 'On Probation' },
+                    { value: 'Confirmed', label: 'Confirmed' },
+                    { value: 'On LWOP', label: 'On LWOP' },
                     { value: 'Retired', label: 'Retired' },
                     { value: 'Resigned', label: 'Resigned' },
+                    { value: 'Terminated', label: 'Terminated' },
+                    { value: 'Dismissed', label: 'Dismissed' },
                   ]}
                 />
               </div>

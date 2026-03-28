@@ -66,6 +66,9 @@ export default function NewRequestPage() {
     if (!selectedEmployeeId) newErrors.employeeId = 'Employee is required';
 
     // Type-specific validations
+    if (type === 'confirmation') {
+      if (!formData.proposedConfirmationDate) newErrors.proposedConfirmationDate = 'Proposed confirmation date is required';
+    }
     if (type === 'promotion') {
       if (!formData.proposedCadre) newErrors.proposedCadre = 'Proposed cadre is required';
       if (!formData.promotionType) newErrors.promotionType = 'Promotion type is required';
@@ -202,6 +205,24 @@ export default function NewRequestPage() {
             </section>
 
             {/* Type-specific fields */}
+            {type === 'confirmation' && (
+              <>
+                <InputField
+                  label="Proposed Confirmation Date"
+                  name="proposedConfirmationDate"
+                  type="date"
+                  value={formData.proposedConfirmationDate || ''}
+                  onChange={handleChange}
+                />
+                <TextareaField
+                  label="Notes"
+                  name="notes"
+                  value={formData.notes || ''}
+                  onChange={handleChange}
+                />
+              </>
+            )}
+
             {type === 'promotion' && (
               <>
                 <SelectField

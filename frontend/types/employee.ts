@@ -3,6 +3,7 @@ export interface Employee {
   employeeEntityId?: string;
   name: string;
   gender: string;
+  photo?: string;
   profileImageUrl?: string;
   dateOfBirth?: string;
   placeOfBirth?: string;
@@ -31,6 +32,11 @@ export interface Employee {
   jobContractUrl?: string;
   birthCertificateUrl?: string;
   institutionId: string;
+  institution?: {
+    id: string;
+    name: string;
+    code: string;
+  };
   createdAt: string;
   updatedAt: string;
   certificates?: EmployeeCertificate[];

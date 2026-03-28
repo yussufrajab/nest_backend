@@ -12,6 +12,8 @@ export const employeeService = {
     page?: number;
     limit?: number;
     search?: string;
+    status?: string;
+    institutionId?: string;
   }): Promise<{ employees: Employee[]; total: number }> {
     try {
       const response = await apiClient.get<{ employees: Employee[]; total: number }>(
@@ -22,6 +24,22 @@ export const employeeService = {
     } catch (error) {
       console.error('Error fetching employees:', error);
       return { employees: [], total: 0 };
+    }
+  },
+
+  async searchEmployeeByZanIdOrPayroll(params: {
+    zanId?: string;
+    payrollNumber?: string;
+  }): Promise<{ employee: Employee | null }> {
+    try {
+      const response = await apiClient.get<{ employee: Employee | null }>(
+        '/employees/search',
+        { params },
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error searching employee:', error);
+      return { employee: null };
     }
   },
 

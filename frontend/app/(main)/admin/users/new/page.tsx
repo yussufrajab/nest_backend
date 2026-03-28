@@ -30,8 +30,8 @@ export default function NewUserPage() {
   }, []);
 
   const loadInstitutions = async () => {
-    const data = await adminService.getInstitutions();
-    setInstitutions(data);
+    const result = await adminService.getInstitutions();
+    setInstitutions(result.institutions || []);
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {

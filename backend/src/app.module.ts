@@ -11,6 +11,10 @@ import { DashboardModule } from './dashboard/dashboard.module';
 import { RequestsModule } from './requests/requests.module';
 import { ComplaintsModule } from './complaints/complaints.module';
 import { ReportsModule } from './reports/reports.module';
+import { UploadModule } from './upload/upload.module';
+import { AuditLogsModule } from './audit-logs/audit-logs.module';
+import { NotificationsModule } from './notifications/notifications.module';
+import { AiModule } from './ai/ai.module';
 
 @Module({
   imports: [
@@ -26,6 +30,10 @@ import { ReportsModule } from './reports/reports.module';
     RequestsModule,
     ComplaintsModule,
     ReportsModule,
+    UploadModule,
+    AuditLogsModule,
+    NotificationsModule,
+    AiModule,
   ],
   controllers: [AppController],
   providers: [AppService],

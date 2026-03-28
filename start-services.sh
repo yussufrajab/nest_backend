@@ -3,6 +3,11 @@
 # CSMS Services Startup Script
 # Starts backend (port 3001) and frontend (port 3000)
 
+# Source nvm if available to get npm/npx in PATH
+if [ -f "$HOME/.nvm/nvm.sh" ]; then
+    source "$HOME/.nvm/nvm.sh"
+fi
+
 echo "==================================="
 echo "Starting CSMS Services..."
 echo "==================================="
@@ -30,6 +35,16 @@ fi
 # Start Backend (port 3001)
 echo ""
 echo "[3/3] Starting Backend (port 3001)..."
+
+# Kill any process on port 3001
+echo "Checking for processes on port 3001..."
+BACKEND_EXISTING_PID=$(fuser 3001/tcp 2>/dev/null)
+if [ -n "$BACKEND_EXISTING_PID" ]; then
+    echo "Killing existing process on port 3001 (PID: $BACKEND_EXISTING_PID)..."
+    kill -9 $BACKEND_EXISTING_PID 2>/dev/null
+    sleep 2
+fi
+
 cd /home/yusuf/nestjs/backend
 
 # Install dependencies if needed
@@ -50,7 +65,6 @@ fi
 
 # Start backend in background
 echo "Starting backend server..."
-cd /home/yusuf/nestjs/backend
 nohup npm run start:dev > /home/yusuf/nestjs/backend.log 2>&1 &
 BACKEND_PID=$!
 sleep 5
@@ -66,6 +80,16 @@ echo "Backend is running on http://localhost:3001 (PID: $BACKEND_PID)"
 # Start Frontend (port 3000) with Turbopack disabled
 echo ""
 echo "Starting Frontend (port 3000) with Turbopack disabled..."
+
+# Kill any process on port 3000
+echo "Checking for processes on port 3000..."
+FRONTEND_EXISTING_PID=$(fuser 3000/tcp 2>/dev/null)
+if [ -n "$FRONTEND_EXISTING_PID" ]; then
+    echo "Killing existing process on port 3000 (PID: $FRONTEND_EXISTING_PID)..."
+    kill -9 $FRONTEND_EXISTING_PID 2>/dev/null
+    sleep 2
+fi
+
 cd /home/yusuf/nestjs/frontend
 
 # Set environment variable to disable Turbopack

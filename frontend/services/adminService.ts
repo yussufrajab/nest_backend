@@ -18,6 +18,10 @@ export interface User {
   };
 }
 
+export interface UserWithAccountStatus extends User {
+  accountStatus: 'Locked' | 'Unlocked';
+}
+
 export interface CreateUserDto {
   name: string;
   username: string;
@@ -63,22 +67,32 @@ export interface UpdateInstitutionDto {
   tinNumber?: string;
 }
 
+export interface PaginatedInstitutions {
+  institutions: Institution[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
 export const adminService = {
   // User Management
   async getUsers(params?: {
     page?: number;
     limit?: number;
     role?: string;
-  }): Promise<{ users: User[]; total: number }> {
+    institutionId?: string;
+    search?: string;
+  }): Promise<{ users: User[]; total: number; page: number; limit: number; totalPages: number }> {
     try {
-      const response = await apiClient.get<{ users: User[]; total: number }>(
+      const response = await apiClient.get<{ users: User[]; total: number; page: number; limit: number; totalPages: number }>(
         '/users',
         { params },
       );
       return response.data;
     } catch (error) {
       console.error('Error fetching users:', error);
-      return { users: [], total: 0 };
+      return { users: [], total: 0, page: 1, limit: 10, totalPages: 0 };
     }
   },
 
@@ -123,13 +137,17 @@ export const adminService = {
   },
 
   // Institution Management
-  async getInstitutions(): Promise<Institution[]> {
+  async getInstitutions(params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+  }): Promise<PaginatedInstitutions> {
     try {
-      const response = await apiClient.get<Institution[]>('/institutions');
+      const response = await apiClient.get<PaginatedInstitutions>('/institutions', { params });
       return response.data;
     } catch (error) {
       console.error('Error fetching institutions:', error);
-      return [];
+      return { institutions: [], total: 0, page: 1, limit: 10, totalPages: 0 };
     }
   },
 

@@ -96,7 +96,7 @@ export default function EmployeeDetailPage() {
                 <h2 className="text-xl font-bold text-gray-900">{employee.name}</h2>
                 <p className="text-gray-600 mt-1">{employee.zanId}</p>
                 <span className="inline-block mt-2 px-3 py-1 text-sm font-medium rounded-full bg-green-100 text-green-800">
-                  {employee.status || 'Active'}
+                  {employee.status || 'On Probation'}
                 </span>
               </div>
 

@@ -51,7 +51,7 @@ export default function EditEmployeePage() {
         employmentDate: data.employmentDate?.split('T')[0] || '',
         confirmationDate: data.confirmationDate?.split('T')[0] || '',
         retirementDate: data.retirementDate?.split('T')[0] || '',
-        status: data.status || 'Active',
+        status: data.status || 'On Probation',
         institutionId: data.institutionId,
       });
     }
@@ -294,10 +294,13 @@ export default function EditEmployeePage() {
                   value={formData.status || ''}
                   onChange={handleChange}
                   options={[
-                    { value: 'Active', label: 'Active' },
-                    { value: 'Inactive', label: 'Inactive' },
+                    { value: 'On Probation', label: 'On Probation' },
+                    { value: 'Confirmed', label: 'Confirmed' },
+                    { value: 'On LWOP', label: 'On LWOP' },
                     { value: 'Retired', label: 'Retired' },
                     { value: 'Resigned', label: 'Resigned' },
+                    { value: 'Terminated', label: 'Terminated' },
+                    { value: 'Dismissed', label: 'Dismissed' },
                   ]}
                 />
               </div>

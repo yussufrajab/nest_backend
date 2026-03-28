@@ -111,21 +111,29 @@ export const requestService = {
     await apiClient.delete(`/requests/${id}`);
   },
 
-  async approveRequest(id: string): Promise<Request> {
-    const response = await apiClient.post<Request>(`/requests/${id}/approve`);
-    return response.data;
-  },
-
-  async rejectRequest(id: string, rejectionReason: string): Promise<Request> {
-    const response = await apiClient.post<Request>(`/requests/${id}/reject`, {
-      rejectionReason,
+  async approveRequest(id: string, type?: string): Promise<Request> {
+    const response = await apiClient.post<Request>(`/requests/${id}/approve`, {
+      decisionDate: new Date().toISOString(),
+    }, {
+      params: { type },
     });
     return response.data;
   },
 
-  async returnRequest(id: string, rejectionReason: string): Promise<Request> {
-    const response = await apiClient.post<Request>(`/requests/${id}/return`, {
+  async rejectRequest(id: string, rejectionReason: string, type?: string): Promise<Request> {
+    const response = await apiClient.post<Request>(`/requests/${id}/reject`, {
       rejectionReason,
+    }, {
+      params: { type },
+    });
+    return response.data;
+  },
+
+  async returnRequest(id: string, rejectionReason: string, type?: string): Promise<Request> {
+    const response = await apiClient.post<Request>(`/requests/${id}/send-back`, {
+      rectificationInstructions: rejectionReason,
+    }, {
+      params: { type },
     });
     return response.data;
   },

@@ -38,9 +38,9 @@ export default function RequestDetailPage() {
   const { user } = useAuth();
   const canReview =
     request?.status === 'PENDING' &&
-    (user?.role === 'HRO' ||
-      user?.role === 'HRMO' ||
+    (user?.role === 'HRMO' ||
       user?.role === 'HHRMD' ||
+      user?.role === 'DO' ||
       user?.role === 'CSCS');
   const canDelete =
     request?.status === 'PENDING' &&
@@ -60,7 +60,7 @@ export default function RequestDetailPage() {
     if (!confirm('Are you sure you want to approve this request?')) return;
     try {
       setReviewing(true);
-      await requestService.approveRequest(id);
+      await requestService.approveRequest(id, type);
       loadRequest();
     } catch (error) {
       console.error('Error approving request:', error);
@@ -78,7 +78,7 @@ export default function RequestDetailPage() {
     if (!confirm('Are you sure you want to reject this request?')) return;
     try {
       setReviewing(true);
-      await requestService.rejectRequest(id, rejectionReason);
+      await requestService.rejectRequest(id, rejectionReason, type);
       loadRequest();
     } catch (error) {
       console.error('Error rejecting request:', error);
@@ -96,7 +96,7 @@ export default function RequestDetailPage() {
     if (!confirm('Are you sure you want to return this request for rectification?')) return;
     try {
       setReviewing(true);
-      await requestService.returnRequest(id, rejectionReason);
+      await requestService.returnRequest(id, rejectionReason, type);
       loadRequest();
     } catch (error) {
       console.error('Error returning request:', error);
@@ -150,11 +150,11 @@ export default function RequestDetailPage() {
     if (request.confirmation) {
       return (
         <>
-          <InfoRow label="Decision Date" value={request.confirmation.decisionDate} />
           <InfoRow
-            label="Commission Decision Date"
-            value={request.confirmation.commissionDecisionDate}
+            label="Proposed Confirmation Date"
+            value={request.confirmation.proposedConfirmationDate}
           />
+          <InfoRow label="Notes" value={request.confirmation.notes} />
         </>
       );
     }

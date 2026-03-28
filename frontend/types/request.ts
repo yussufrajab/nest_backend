@@ -51,7 +51,8 @@ export type RequestType =
 
 export interface ConfirmationRequest {
   id: string;
-  decisionDate?: string;
+  proposedConfirmationDate?: string;
+  notes?: string;
   commissionDecisionDate?: string;
   requestId: string;
 }
@@ -115,7 +116,8 @@ export interface SeparationRequest {
 
 export interface CreateConfirmationRequestDto {
   employeeId: string;
-  decisionDate?: string;
+  proposedConfirmationDate?: string;
+  notes?: string;
 }
 
 export interface CreatePromotionRequestDto {

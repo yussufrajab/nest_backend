@@ -2,9 +2,26 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { requestService } from '../../../services/requestService';
 import type { Request, RequestStatus } from '../../../types/request';
 import { useAuth } from '../../../hooks/use-auth';
+import {
+  Search,
+  Filter,
+  Plus,
+  ChevronLeft,
+  ChevronRight,
+  FileText,
+  Clock,
+  CheckCircle,
+  XCircle,
+  ArrowRight,
+  MoreHorizontal,
+} from 'lucide-react';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../../../components/ui/Card';
+import { Button } from '../../../components/ui/Button';
+import { Badge } from '../../../components/ui/Badge';
 
 const REQUEST_TYPES: Record<string, string> = {
   confirmation: 'Confirmation',
@@ -17,11 +34,11 @@ const REQUEST_TYPES: Record<string, string> = {
   separation: 'Separation',
 };
 
-const STATUS_COLORS: Record<RequestStatus, { bg: string; text: string }> = {
-  PENDING: { bg: 'bg-yellow-100', text: 'text-yellow-800' },
-  APPROVED: { bg: 'bg-green-100', text: 'text-green-800' },
-  REJECTED: { bg: 'bg-red-100', text: 'text-red-800' },
-  RETURNED: { bg: 'bg-orange-100', text: 'text-orange-800' },
+const STATUS_CONFIG: Record<RequestStatus, { color: string; icon: any; label: string }> = {
+  PENDING: { color: 'pending', icon: Clock, label: 'Pending' },
+  APPROVED: { color: 'approved', icon: CheckCircle, label: 'Approved' },
+  REJECTED: { color: 'rejected', icon: XCircle, label: 'Rejected' },
+  RETURNED: { color: 'returned', icon: ArrowRight, label: 'Returned' },
 };
 
 export default function RequestsPage() {
@@ -29,8 +46,10 @@ export default function RequestsPage() {
   const [requests, setRequests] = useState<Request[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('');
+  const [typeFilter, setTypeFilter] = useState('');
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
+  const [showNewRequestDropdown, setShowNewRequestDropdown] = useState(false);
 
   const { user } = useAuth();
   const canCreateRequest = user?.role === 'HRO';
@@ -42,7 +61,17 @@ export default function RequestsPage() {
 
   useEffect(() => {
     loadRequests();
-  }, [page, statusFilter]);
+  }, [page, statusFilter, typeFilter]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (showNewRequestDropdown && !(event.target as Element).closest('button')) {
+        setShowNewRequestDropdown(false);
+      }
+    };
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, [showNewRequestDropdown]);
 
   const loadRequests = async () => {
     setLoading(true);
@@ -50,6 +79,7 @@ export default function RequestsPage() {
       page,
       limit: 20,
       status: statusFilter || undefined,
+      type: typeFilter || undefined,
     });
     setRequests(result.requests);
     setTotal(result.total);
@@ -79,138 +109,300 @@ export default function RequestsPage() {
     return 'unknown';
   };
 
+  const getRequestTypeBadge = (request: Request) => {
+    const type = getRequestType(request);
+    return REQUEST_TYPES[type] || type;
+  };
+
+  const totalPages = Math.ceil(total / 20);
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Requests</h1>
-            <p className="text-gray-600 mt-1">
-              Total: {total} request{total !== 1 ? 's' : ''}
-            </p>
-          </div>
-          {canCreateRequest && (
-            <button
-              onClick={() => router.push('/requests/new/confirmation')}
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-slate-800">Requests</h1>
+          <p className="text-slate-500 mt-1">
+            Manage and track HR requests across all institutions
+          </p>
+        </div>
+        {canCreateRequest && (
+          <div className="relative">
+            <Button
+              variant="primary"
+              onClick={() => setShowNewRequestDropdown(!showNewRequestDropdown)}
+              className="flex items-center gap-2"
             >
+              <Plus className="w-4 h-4" />
               New Request
-            </button>
-          )}
-        </div>
-
-        <div className="mb-6 flex gap-4 flex-wrap">
-          <select
-            value={statusFilter}
-            onChange={(e) => {
-              setStatusFilter(e.target.value);
-              setPage(1);
-            }}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-          >
-            <option value="">All Statuses</option>
-            <option value="PENDING">Pending</option>
-            <option value="APPROVED">Approved</option>
-            <option value="REJECTED">Rejected</option>
-            <option value="RETURNED">Returned</option>
-          </select>
-        </div>
-
-        {loading ? (
-          <div className="text-center py-12">
-            <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-gray-300 border-t-blue-600"></div>
-          </div>
-        ) : requests.length === 0 ? (
-          <div className="text-center py-12 bg-white rounded-lg shadow">
-            <p className="text-gray-500">No requests found</p>
-          </div>
-        ) : (
-          <div className="bg-white shadow rounded-lg overflow-hidden">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Type
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Employee
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Submitted By
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Stage
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Date
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {requests.map((request) => {
-                  const type = getRequestType(request);
-                  const typeLabel = REQUEST_TYPES[type] || type;
-                  const statusColor = STATUS_COLORS[request.status];
-
-                  return (
-                    <tr key={request.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {typeLabel}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {request.employee.name}
-                        <p className="text-xs text-gray-500">{request.employee.zanId}</p>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {request.submittedBy.name}
-                        <p className="text-xs text-gray-500">{request.submittedBy.role}</p>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
-                          {request.reviewStage}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span
-                          className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${statusColor.bg} ${statusColor.text}`}
-                        >
-                          {request.status}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {new Date(request.createdAt).toLocaleDateString()}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <button
-                          onClick={() => router.push(`/requests/${request.id}`)}
-                          className="text-blue-600 hover:text-blue-900 mr-3"
-                        >
-                          View
-                        </button>
-                        {request.status === 'PENDING' &&
-                          request.submittedById === user?.id && (
-                            <button
-                              onClick={() => handleDelete(request.id, typeLabel)}
-                              className="text-red-600 hover:text-red-900"
-                            >
-                              Delete
-                            </button>
-                          )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+            </Button>
+            {showNewRequestDropdown && (
+              <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-lg border border-slate-200 z-50 py-2">
+                {Object.entries(REQUEST_TYPES).map(([type, label]) => (
+                  <Link
+                    key={type}
+                    href={`/requests/new/${type}`}
+                    className="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-primary-50 hover:text-primary-600 transition-colors"
+                    onClick={() => setShowNewRequestDropdown(false)}
+                  >
+                    <FileText className="w-4 h-4" />
+                    {label}
+                  </Link>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>
+
+      {/* Stats Row */}
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+        <Card className="flex items-center gap-4 p-4">
+          <div className="p-3 rounded-xl bg-slate-100 text-slate-600">
+            <FileText className="w-6 h-6" />
+          </div>
+          <div>
+            <p className="text-2xl font-bold text-slate-800">{total}</p>
+            <p className="text-sm text-slate-500">Total Requests</p>
+          </div>
+        </Card>
+
+        <Card className="flex items-center gap-4 p-4">
+          <div className="p-3 rounded-xl bg-amber-50 text-amber-600">
+            <Clock className="w-6 h-6" />
+          </div>
+          <div>
+            <p className="text-2xl font-bold text-slate-800">
+              {requests.filter(r => r.status === 'PENDING').length}
+            </p>
+            <p className="text-sm text-slate-500">Pending</p>
+          </div>
+        </Card>
+
+        <Card className="flex items-center gap-4 p-4">
+          <div className="p-3 rounded-xl bg-emerald-50 text-emerald-600">
+            <CheckCircle className="w-6 h-6" />
+          </div>
+          <div>
+            <p className="text-2xl font-bold text-slate-800">
+              {requests.filter(r => r.status === 'APPROVED').length}
+            </p>
+            <p className="text-sm text-slate-500">Approved</p>
+          </div>
+        </Card>
+
+        <Card className="flex items-center gap-4 p-4">
+          <div className="p-3 rounded-xl bg-rose-50 text-rose-600">
+            <XCircle className="w-6 h-6" />
+          </div>
+          <div>
+            <p className="text-2xl font-bold text-slate-800">
+              {requests.filter(r => r.status === 'REJECTED').length}
+            </p>
+            <p className="text-sm text-slate-500">Rejected</p>
+          </div>
+        </Card>
+      </div>
+
+      {/* Filters */}
+      <Card>
+        <div className="p-4 flex flex-col sm:flex-row gap-4">
+          <div className="flex-1">
+            <select
+              value={statusFilter}
+              onChange={(e) => {
+                setStatusFilter(e.target.value);
+                setPage(1);
+              }}
+              className="w-full px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-700
+                       focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500
+                       hover:border-slate-300 transition-all duration-200"
+            >
+              <option value="">All Statuses</option>
+              <option value="PENDING">Pending</option>
+              <option value="APPROVED">Approved</option>
+              <option value="REJECTED">Rejected</option>
+              <option value="RETURNED">Returned</option>
+            </select>
+          </div>
+
+          <div className="flex-1">
+            <select
+              value={typeFilter}
+              onChange={(e) => {
+                setTypeFilter(e.target.value);
+                setPage(1);
+              }}
+              className="w-full px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-700
+                       focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500
+                       hover:border-slate-300 transition-all duration-200"
+            >
+              <option value="">All Types</option>
+              <option value="confirmation">Confirmation</option>
+              <option value="promotion">Promotion</option>
+              <option value="lwop">Leave Without Pay</option>
+              <option value="cadre-change">Cadre Change</option>
+              <option value="retirement">Retirement</option>
+              <option value="resignation">Resignation</option>
+              <option value="service-extension">Service Extension</option>
+              <option value="separation">Separation</option>
+            </select>
+          </div>
+        </div>
+      </Card>
+
+      {/* Table */}
+      <Card>
+        {loading ? (
+          <div className="p-12 flex flex-col items-center justify-center">
+            <div className="relative">
+              <div className="w-12 h-12 rounded-full border-4 border-primary-200 border-t-primary-600 animate-spin"></div>
+            </div>
+            <p className="mt-4 text-sm text-slate-500">Loading requests...</p>
+          </div>
+        ) : requests.length === 0 ? (
+          <div className="p-12 text-center">
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-slate-100 mb-4">
+              <FileText className="w-8 h-8 text-slate-400" />
+            </div>
+            <h3 className="text-lg font-medium text-slate-800 mb-1">No requests found</h3>
+            <p className="text-slate-500">Try adjusting your filters or create a new request</p>
+          </div>
+        ) : (
+          <>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-200">
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                      Type
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                      Employee
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                      Submitted By
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                      Stage
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                      Date
+                    </th>
+                    <th className="px-6 py-4 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {requests.map((request) => {
+                    const type = getRequestType(request);
+                    const typeLabel = REQUEST_TYPES[type] || type;
+                    const statusConfig = STATUS_CONFIG[request.status];
+                    const StatusIcon = statusConfig.icon;
+
+                    return (
+                      <tr key={request.id} className="hover:bg-slate-50/80 transition-colors">
+                        <td className="px-6 py-4">
+                          <Badge variant={type as any}>
+                            {typeLabel}
+                          </Badge>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-sm font-medium text-slate-800">{request.employee.name}</div>
+                          <div className="text-xs text-slate-500 font-mono">{request.employee.zanId}</div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-sm text-slate-700">{request.submittedBy.name}</div>
+                          <div className="text-xs text-slate-500">{request.submittedBy.role}</div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <Badge variant={request.reviewStage.toLowerCase() as any}>
+                            {request.reviewStage}
+                          </Badge>
+                        </td>
+                        <td className="px-6 py-4">
+                          <Badge variant={request.status.toLowerCase() as any}>
+                            {request.status}
+                          </Badge>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-slate-600">
+                          {new Date(request.createdAt).toLocaleDateString()}
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => router.push(`/requests/${request.id}`)}
+                            >
+                              View
+                            </Button>
+                            {request.status === 'PENDING' &&
+                              request.submittedById === user?.id && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="text-rose-600 hover:text-rose-700 hover:bg-rose-50"
+                                  onClick={() => handleDelete(request.id, typeLabel)}
+                                >
+                                  Delete
+                                </Button>
+                              )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="px-6 py-4 border-t border-slate-100 flex items-center justify-between">
+                <div className="text-sm text-slate-500">
+                  Showing {((page - 1) * 20) + 1} to {Math.min(page * 20, total)} of {total} results
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => setPage(p => Math.max(1, p - 1))}
+                    disabled={page === 1}
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </Button>
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => i + 1).map((p) => (
+                      <Button
+                        key={p}
+                        variant={p === page ? 'primary' : 'ghost'}
+                        size="sm"
+                        onClick={() => setPage(p)}
+                        className="w-8 h-8 p-0"
+                      >
+                        {p}
+                      </Button>
+                    ))}
+                  </div>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                    disabled={page >= totalPages}
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </Card>
     </div>
   );
 }

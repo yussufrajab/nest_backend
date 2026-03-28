@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../../hooks/use-auth';
-import { Lock, User } from 'lucide-react';
+import { Lock, User, Shield, AlertCircle } from 'lucide-react';
+import { Button } from '../../../components/ui/Button';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -28,37 +29,55 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 px-4">
-      <div className="max-w-md w-full">
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8">
-          <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-              CSMS Login
-            </h1>
-            <p className="text-gray-600 dark:text-gray-400">
-              Civil Service Management System
-            </p>
-          </div>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50 to-teal-50 relative overflow-hidden">
+      {/* Decorative Elements */}
+      <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
+        <div className="absolute -top-40 -right-40 w-96 h-96 bg-primary-200/30 rounded-full blur-3xl"></div>
+        <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-accent-200/30 rounded-full blur-3xl"></div>
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-gradient-radial from-primary-100/20 to-transparent rounded-full"></div>
+      </div>
 
+      {/* Content */}
+      <div className="relative w-full max-w-md px-4">
+        {/* Logo */}
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-br from-primary-600 to-accent-500 shadow-xl shadow-primary-500/30 mb-6">
+            <Shield className="w-10 h-10 text-white" />
+          </div>
+          <h1 className="text-3xl font-bold text-slate-800 mb-2">
+            Welcome Back
+          </h1>
+          <p className="text-slate-500">
+            Sign in to access Civil Service Management System
+          </p>
+        </div>
+
+        {/* Login Card */}
+        <div className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-xl shadow-slate-200/50 border border-white/50 p-8">
           {error && (
-            <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-              <p className="text-red-600 dark:text-red-400 text-sm">{error}</p>
+            <div className="mb-6 p-4 bg-rose-50 border border-rose-200 rounded-xl flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-rose-500 flex-shrink-0 mt-0.5" />
+              <p className="text-sm text-rose-700">{error}</p>
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label htmlFor="username" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              <label htmlFor="username" className="block text-sm font-medium text-slate-700 mb-2">
                 Username
               </label>
               <div className="relative">
-                <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+                  <User className="w-5 h-5" />
+                </div>
                 <input
                   id="username"
                   type="text"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                  className="w-full pl-12 pr-4 py-3 rounded-xl bg-white border border-slate-200 text-slate-700
+                           placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20
+                           focus:border-primary-500 hover:border-slate-300 transition-all duration-200"
                   placeholder="Enter your username"
                   required
                   autoComplete="username"
@@ -67,17 +86,21 @@ export default function LoginPage() {
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              <label htmlFor="password" className="block text-sm font-medium text-slate-700 mb-2">
                 Password
               </label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+                  <Lock className="w-5 h-5" />
+                </div>
                 <input
                   id="password"
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                  className="w-full pl-12 pr-4 py-3 rounded-xl bg-white border border-slate-200 text-slate-700
+                           placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20
+                           focus:border-primary-500 hover:border-slate-300 transition-all duration-200"
                   placeholder="Enter your password"
                   required
                   autoComplete="current-password"
@@ -85,27 +108,34 @@ export default function LoginPage() {
               </div>
             </div>
 
-            <div className="flex items-center justify-between">
-              <a href="/forgot-password" className="text-sm text-blue-600 dark:text-blue-400 hover:underline">
+            <div className="flex items-center justify-between pt-1">
+              <a href="/forgot-password" className="text-sm text-primary-600 hover:text-primary-700 font-medium transition-colors">
                 Forgot password?
               </a>
             </div>
 
-            <button
+            <Button
               type="submit"
-              disabled={isLoading}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              variant="primary"
+              size="lg"
+              isLoading={isLoading}
+              className="w-full"
             >
-              {isLoading ? 'Signing in...' : 'Sign In'}
-            </button>
+              Sign In
+            </Button>
           </form>
 
-          <div className="mt-6 text-center">
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              Contact your administrator if you need login credentials.
+          <div className="mt-6 pt-6 border-t border-slate-100 text-center">
+            <p className="text-sm text-slate-500">
+              Contact your administrator if you need login credentials
             </p>
           </div>
         </div>
+
+        {/* Footer */}
+        <p className="text-center text-xs text-slate-400 mt-8">
+          © 2026 Civil Service Commission of Zanzibar. All rights reserved.
+        </p>
       </div>
     </div>
   );

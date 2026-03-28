@@ -9,26 +9,67 @@ import { UpdateUserDto } from './dto/update-user.dto';
 export class UsersService {
   constructor(private prisma: PrismaService) {}
 
-  async findAll(filters?: { institutionId?: string; role?: string }) {
-    const users = await this.prisma.user.findMany({
-      where: filters,
-      include: { institution: true, employee: true },
-    });
+  async findAll(filters?: {
+    page?: number;
+    limit?: number;
+    institutionId?: string;
+    role?: string;
+    search?: string;
+  }) {
+    const page = filters?.page || 1;
+    const limit = filters?.limit || 10;
+    const skip = (page - 1) * limit;
 
-    return users.map((user) => ({
-      id: user.id,
-      name: user.name,
-      username: user.username,
-      role: user.role,
-      active: user.active,
-      institutionId: user.institutionId,
-      institution: user.institution ? { id: user.institution.id, name: user.institution.name } : null,
-      employeeId: user.employeeId,
-      phoneNumber: user.phoneNumber,
-      email: user.email,
-      createdAt: user.createdAt,
-      updatedAt: user.updatedAt,
-    }));
+    const where: any = {};
+
+    if (filters?.role) {
+      where.role = filters.role;
+    }
+
+    if (filters?.institutionId) {
+      where.institutionId = filters.institutionId;
+    }
+
+    if (filters?.search) {
+      where.OR = [
+        { name: { contains: filters.search, mode: 'insensitive' } },
+        { username: { contains: filters.search, mode: 'insensitive' } },
+        { email: { contains: filters.search, mode: 'insensitive' } },
+        { phoneNumber: { contains: filters.search, mode: 'insensitive' } },
+      ];
+    }
+
+    const [users, total] = await Promise.all([
+      this.prisma.user.findMany({
+        where,
+        include: { institution: true, employee: true },
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.user.count({ where }),
+    ]);
+
+    return {
+      users: users.map((user) => ({
+        id: user.id,
+        name: user.name,
+        username: user.username,
+        role: user.role,
+        active: user.active,
+        institutionId: user.institutionId,
+        institution: user.institution ? { id: user.institution.id, name: user.institution.name } : null,
+        employeeId: user.employeeId,
+        phoneNumber: user.phoneNumber,
+        email: user.email,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
+      })),
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 
   async findOne(id: string) {

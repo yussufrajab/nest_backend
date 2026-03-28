@@ -1,20 +1,82 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { Request, Prisma } from '@prisma/client';
 import { v4 as uuidv4 } from 'uuid';
+import {
+  CreateConfirmationRequestDto,
+  CreatePromotionRequestDto,
+  CreateLwopRequestDto,
+  CreateCadreChangeRequestDto,
+  CreateServiceExtensionRequestDto,
+  CreateRetirementRequestDto,
+  CreateResignationRequestDto,
+  CreateSeparationRequestDto,
+  ApproveRequestDto,
+  RejectRequestDto,
+  SendBackRequestDto,
+} from './dto';
+import {
+  ConfirmationValidator,
+  PromotionValidator,
+  LwopValidator,
+  CadreChangeValidator,
+  ServiceExtensionValidator,
+  RetirementValidator,
+  ResignationValidator,
+  SeparationValidator,
+} from './validators';
+
+export interface RequestWithRelations extends Request {
+  employee: any;
+  submittedBy: any;
+  reviewedBy?: any;
+  confirmation?: any;
+  promotion?: any;
+  lwop?: any;
+  cadreChange?: any;
+  retirement?: any;
+  resignation?: any;
+  serviceExtension?: any;
+  separation?: any;
+}
+
+export interface RequestsResult {
+  requests: RequestWithRelations[];
+  total: number;
+}
 
 @Injectable()
 export class RequestsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    public prisma: PrismaService,
+    public confirmationValidator: ConfirmationValidator,
+    public promotionValidator: PromotionValidator,
+    public lwopValidator: LwopValidator,
+    public cadreChangeValidator: CadreChangeValidator,
+    public serviceExtensionValidator: ServiceExtensionValidator,
+    public retirementValidator: RetirementValidator,
+    public resignationValidator: ResignationValidator,
+    public separationValidator: SeparationValidator,
+  ) {}
 
-  async createRequest(data: Prisma.RequestCreateInput): Promise<Request> {
-    return this.prisma.request.create({ data: { ...data, id: uuidv4() } });
-  }
+  // ==================== GENERIC REQUEST METHODS ====================
 
-  async getRequestById(id: string): Promise<Request> {
+  async getRequestById(id: string): Promise<RequestWithRelations> {
     const request = await this.prisma.request.findUnique({
       where: { id },
-      include: { employee: true, submittedBy: true },
+      include: {
+        employee: true,
+        submittedBy: true,
+        reviewedBy: true,
+        confirmation: true,
+        promotion: true,
+        lwop: true,
+        cadreChange: true,
+        retirement: true,
+        resignation: true,
+        serviceExtension: true,
+        separation: true,
+      },
     });
     if (!request) {
       throw new NotFoundException(`Request with ID ${id} not found`);
@@ -27,7 +89,7 @@ export class RequestsService {
     take?: number;
     where?: Prisma.RequestWhereInput;
     orderBy?: Prisma.RequestOrderByWithRelationInput;
-  }): Promise<{ requests: Request[]; total: number }> {
+  }): Promise<RequestsResult> {
     const { skip, take, where, orderBy } = params;
     const [requests, total] = await Promise.all([
       this.prisma.request.findMany({
@@ -35,7 +97,19 @@ export class RequestsService {
         take,
         where,
         orderBy,
-        include: { employee: true, submittedBy: true },
+        include: {
+          employee: true,
+          submittedBy: true,
+          reviewedBy: true,
+          confirmation: true,
+          promotion: true,
+          lwop: true,
+          cadreChange: true,
+          retirement: true,
+          resignation: true,
+          serviceExtension: true,
+          separation: true,
+        },
       }),
       this.prisma.request.count({ where }),
     ]);
@@ -59,5 +133,266 @@ export class RequestsService {
       throw new NotFoundException(`Request with ID ${id} not found`);
     }
     return this.prisma.request.delete({ where: { id } });
+  }
+
+  // ==================== CONFIRMATION REQUESTS ====================
+
+  async createConfirmationRequest(
+    dto: CreateConfirmationRequestDto,
+    submittedById: string,
+  ) {
+    // Validate
+    await this.confirmationValidator.validate(dto.employeeId);
+
+    // Get employee for institution
+    const employee = await this.prisma.employee.findUnique({
+      where: { id: dto.employeeId },
+    });
+
+    // Generate request ID
+    const institutionPrefix = employee?.institutionId?.substring(0, 6).toUpperCase() || 'UNK';
+    const year = new Date().getFullYear();
+    const count = await this.prisma.confirmationRequest.count();
+    const requestId = `CONF-${institutionPrefix}-${year}-${String(count + 1).padStart(6, '0')}`;
+
+    // Create request with nested confirmation data
+    return this.prisma.request.create({
+      data: {
+        id: uuidv4(),
+        status: 'PENDING',
+        reviewStage: 'Submitted',
+        documents: [],
+        employeeId: dto.employeeId,
+        submittedById,
+        confirmation: {
+          create: {
+            id: uuidv4(),
+            proposedConfirmationDate: dto.proposedConfirmationDate ? new Date(dto.proposedConfirmationDate) : null,
+            notes: dto.notes,
+          },
+        },
+      },
+      include: {
+        employee: true,
+        submittedBy: true,
+        confirmation: true,
+      },
+    });
+  }
+
+  // ==================== WORKFLOW METHODS ====================
+
+  async approveRequest(
+    id: string,
+    requestType: string,
+    dto: ApproveRequestDto,
+    reviewedById: string,
+    userRole: string,
+  ) {
+    const request = await this.getRequestById(id);
+
+    // Check approval authority
+    this.checkApprovalAuthority(requestType, userRole);
+
+    // Update request status
+    const updatedRequest = await this.prisma.request.update({
+      where: { id },
+      data: {
+        status: 'APPROVED',
+        reviewedById,
+        updatedAt: new Date(),
+      },
+      include: {
+        employee: true,
+        confirmation: true,
+        promotion: true,
+        lwop: true,
+        cadreChange: true,
+        retirement: true,
+        resignation: true,
+        serviceExtension: true,
+        separation: true,
+      },
+    });
+
+    // Update the specific request type with decision data based on type
+    await this.updateRequestTypeData(requestType, id, {
+      commissionDecisionDate: dto.commissionDecisionDate
+        ? new Date(dto.commissionDecisionDate)
+        : new Date(dto.decisionDate),
+      commissionDecisionReason: dto.commissionDecisionReason,
+    });
+
+    // Update employee record based on request type
+    await this.updateEmployeeRecord(request, requestType);
+
+    return updatedRequest;
+  }
+
+  async rejectRequest(
+    id: string,
+    requestType: string,
+    dto: RejectRequestDto,
+    reviewedById: string,
+    userRole: string,
+  ) {
+    this.checkApprovalAuthority(requestType, userRole);
+
+    return this.prisma.request.update({
+      where: { id },
+      data: {
+        status: 'REJECTED',
+        rejectionReason: dto.rejectionReason,
+        reviewedById,
+        updatedAt: new Date(),
+      },
+    });
+  }
+
+  async sendBackRequest(
+    id: string,
+    requestType: string,
+    dto: SendBackRequestDto,
+    reviewedById: string,
+    userRole: string,
+  ) {
+    this.checkApprovalAuthority(requestType, userRole);
+
+    return this.prisma.request.update({
+      where: { id },
+      data: {
+        status: 'RETURNED',
+        rejectionReason: dto.rectificationInstructions,
+        reviewedById,
+        updatedAt: new Date(),
+      },
+    });
+  }
+
+  async resubmitRequest(
+    id: string,
+    requestType: string,
+    documents: string[],
+  ) {
+    return this.prisma.request.update({
+      where: { id },
+      data: {
+        status: 'PENDING',
+        documents,
+        updatedAt: new Date(),
+      },
+    });
+  }
+
+  // ==================== HELPER METHODS ====================
+
+  private checkApprovalAuthority(requestType: string, userRole: string) {
+    const authority: Record<string, string[]> = {
+      confirmation: ['HHRMD', 'HRMO'],
+      promotion: ['HHRMD', 'HRMO'],
+      lwop: ['HHRMD', 'HRMO'],
+      cadreChange: ['HHRMD'], // HHRMD only
+      serviceExtension: ['HHRMD', 'HRMO'],
+      retirement: ['HHRMD', 'HRMO'],
+      resignation: ['HHRMD', 'HRMO'],
+      separation: ['HHRMD', 'DO'], // Disciplinary matter
+    };
+
+    const allowedRoles = authority[requestType.toLowerCase()] || [];
+    if (!allowedRoles.includes(userRole)) {
+      throw new ForbiddenException(
+        `User role ${userRole} is not authorized to approve ${requestType} requests. Allowed roles: ${allowedRoles.join(', ')}`,
+      );
+    }
+  }
+
+  private async updateRequestTypeData(requestType: string, requestId: string, data: any) {
+    const modelMap: Record<string, any> = {
+      confirmation: this.prisma.confirmationRequest,
+      promotion: this.prisma.promotionRequest,
+      lwop: this.prisma.lwopRequest,
+      cadreChange: this.prisma.cadreChangeRequest,
+      serviceExtension: this.prisma.serviceExtensionRequest,
+      retirement: this.prisma.retirementRequest,
+      resignation: this.prisma.resignationRequest,
+      separation: this.prisma.separationRequest,
+    };
+
+    const model = modelMap[requestType.toLowerCase()];
+    if (model) {
+      await model.update({
+        where: { requestId },
+        data,
+      });
+    }
+  }
+
+  private async updateEmployeeRecord(request: RequestWithRelations, requestType: string) {
+    const updateData: any = {};
+
+    switch (requestType.toLowerCase()) {
+      case 'confirmation':
+        updateData.status = 'Confirmed';
+        updateData.confirmationDate = new Date();
+        break;
+
+      case 'promotion':
+        const promotion = await this.prisma.promotionRequest.findUnique({
+          where: { requestId: request.id },
+        });
+        if (promotion) {
+          updateData.cadre = promotion.proposedCadre;
+        }
+        break;
+
+      case 'lwop':
+        const lwop = await this.prisma.lwopRequest.findUnique({
+          where: { requestId: request.id },
+        });
+        if (lwop) {
+          updateData.status = 'On LWOP';
+        }
+        break;
+
+      case 'cadreChange':
+        const cadreChange = await this.prisma.cadreChangeRequest.findUnique({
+          where: { requestId: request.id },
+        });
+        if (cadreChange) {
+          updateData.cadre = cadreChange.newCadre;
+        }
+        break;
+
+      case 'retirement':
+        updateData.status = 'Retired';
+        const retirement = await this.prisma.retirementRequest.findUnique({
+          where: { requestId: request.id },
+        });
+        if (retirement) {
+          updateData.retirementDate = retirement.proposedDate;
+        }
+        break;
+
+      case 'resignation':
+        updateData.status = 'Resigned';
+        break;
+
+      case 'separation':
+        const separation = await this.prisma.separationRequest.findUnique({
+          where: { requestId: request.id },
+        });
+        if (separation) {
+          updateData.status =
+            separation.type === 'Termination' ? 'Terminated' : 'Dismissed';
+        }
+        break;
+    }
+
+    if (Object.keys(updateData).length > 0) {
+      await this.prisma.employee.update({
+        where: { id: request.employeeId },
+        data: updateData,
+      });
+    }
   }
 }

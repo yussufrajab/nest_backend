@@ -1,21 +1,20 @@
 import {
   Controller,
   Get,
-  Post,
-  Response,
+  Res,
   UseGuards,
-  Param,
 } from '@nestjs/common';
+import type { Response } from 'express';
 import { ReportsService } from './reports.service';
-import { AuthGuard } from '@nestjs/passport';
+import { JwtAuthGuard } from '../shared/guards/jwt-auth.guard';
 
 @Controller('reports')
-@UseGuards(AuthGuard('jwt'))
+@UseGuards(JwtAuthGuard)
 export class ReportsController {
   constructor(private readonly reportsService: ReportsService) {}
 
   @Get('employee')
-  async generateEmployeeReport(@Response() res) {
+  async generateEmployeeReport(@Res() res: Response) {
     const report = await this.reportsService.generateEmployeeReport();
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', 'attachment; filename="employee-report.pdf"');
@@ -23,7 +22,7 @@ export class ReportsController {
   }
 
   @Get('request')
-  async generateRequestReport(@Response() res) {
+  async generateRequestReport(@Res() res: Response) {
     const report = await this.reportsService.generateRequestReport();
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', 'attachment; filename="request-report.pdf"');
@@ -31,7 +30,7 @@ export class ReportsController {
   }
 
   @Get('complaint')
-  async generateComplaintReport(@Response() res) {
+  async generateComplaintReport(@Res() res: Response) {
     const report = await this.reportsService.generateComplaintReport();
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', 'attachment; filename="complaint-report.pdf"');
