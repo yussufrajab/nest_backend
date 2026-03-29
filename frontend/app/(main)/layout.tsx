@@ -1,6 +1,7 @@
 'use client';
 
 import Sidebar from '../../components/Sidebar';
+import { Header } from '../../components/Header';
 import { useAuth } from '../../hooks/use-auth';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
@@ -35,11 +36,12 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
   return (
     <div className="min-h-screen bg-slate-50">
       <Sidebar />
-      <main className="ml-72 min-h-screen">
-        <div className="p-6 lg:p-8">
+      <div className="ml-72 min-h-screen flex flex-col">
+        <Header />
+        <main className="flex-1 p-6 lg:p-8">
           {children}
-        </div>
-      </main>
+        </main>
+      </div>
     </div>
   );
 }

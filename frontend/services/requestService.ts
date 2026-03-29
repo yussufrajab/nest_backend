@@ -13,17 +13,29 @@ import type {
   ReviewRequestDto,
 } from '../types/request';
 
+export interface GetRequestsParams {
+  page?: number;
+  limit?: number;
+  status?: string;
+  type?: string;
+  search?: string;
+  dateFrom?: string;
+  dateTo?: string;
+}
+
 export const requestService = {
-  async getRequests(params?: {
-    page?: number;
-    limit?: number;
-    status?: string;
-    type?: string;
-  }): Promise<{ requests: Request[]; total: number }> {
+  async getRequests(params?: GetRequestsParams): Promise<{ requests: Request[]; total: number }> {
     try {
+      const { page = 1, limit = 20, ...rest } = params || {};
       const response = await apiClient.get<{ requests: Request[]; total: number }>(
         '/requests',
-        { params },
+        {
+          params: {
+            skip: (page - 1) * limit,
+            take: limit,
+            ...rest,
+          },
+        },
       );
       return response.data;
     } catch (error) {
@@ -148,5 +160,28 @@ export const requestService = {
       },
     });
     return response.data;
+  },
+
+  async exportCSV(params?: { status?: string; type?: string }): Promise<void> {
+    try {
+      const response = await apiClient.get('/requests/export/csv', {
+        params,
+        responseType: 'blob',
+      });
+
+      // Create a download link
+      const blob = new Blob([response.data as BlobPart], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `requests-${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error exporting CSV:', error);
+      throw error;
+    }
   },
 };

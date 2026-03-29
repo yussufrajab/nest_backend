@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { requestService } from '../../../services/requestService';
@@ -18,6 +18,9 @@ import {
   XCircle,
   ArrowRight,
   MoreHorizontal,
+  X,
+  Calendar,
+  Download,
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../../../components/ui/Card';
 import { Button } from '../../../components/ui/Button';
@@ -41,15 +44,33 @@ const STATUS_CONFIG: Record<RequestStatus, { color: string; icon: any; label: st
   RETURNED: { color: 'returned', icon: ArrowRight, label: 'Returned' },
 };
 
+// Debounce hook
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState<T>(value);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedValue(value), delay);
+    return () => clearTimeout(timer);
+  }, [value, delay]);
+
+  return debouncedValue;
+}
+
 export default function RequestsPage() {
   const router = useRouter();
   const [requests, setRequests] = useState<Request[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [showNewRequestDropdown, setShowNewRequestDropdown] = useState(false);
+
+  const debouncedSearch = useDebounce(searchQuery, 300);
 
   const { user } = useAuth();
   const canCreateRequest = user?.role === 'HRO';
@@ -59,9 +80,25 @@ export default function RequestsPage() {
     user?.role === 'HHRMD' ||
     user?.role === 'CSCS';
 
+  const loadRequests = useCallback(async () => {
+    setLoading(true);
+    const result = await requestService.getRequests({
+      page,
+      limit: 20,
+      status: statusFilter || undefined,
+      type: typeFilter || undefined,
+      search: debouncedSearch || undefined,
+      dateFrom: dateFrom || undefined,
+      dateTo: dateTo || undefined,
+    });
+    setRequests(result.requests);
+    setTotal(result.total);
+    setLoading(false);
+  }, [page, statusFilter, typeFilter, debouncedSearch, dateFrom, dateTo]);
+
   useEffect(() => {
     loadRequests();
-  }, [page, statusFilter, typeFilter]);
+  }, [loadRequests]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -72,19 +109,6 @@ export default function RequestsPage() {
     document.addEventListener('click', handleClickOutside);
     return () => document.removeEventListener('click', handleClickOutside);
   }, [showNewRequestDropdown]);
-
-  const loadRequests = async () => {
-    setLoading(true);
-    const result = await requestService.getRequests({
-      page,
-      limit: 20,
-      status: statusFilter || undefined,
-      type: typeFilter || undefined,
-    });
-    setRequests(result.requests);
-    setTotal(result.total);
-    setLoading(false);
-  };
 
   const handleDelete = async (id: string, type: string) => {
     if (!confirm(`Are you sure you want to delete this ${type} request?`)) return;
@@ -114,6 +138,17 @@ export default function RequestsPage() {
     return REQUEST_TYPES[type] || type;
   };
 
+  const clearFilters = () => {
+    setStatusFilter('');
+    setTypeFilter('');
+    setSearchQuery('');
+    setDateFrom('');
+    setDateTo('');
+    setPage(1);
+  };
+
+  const hasActiveFilters = statusFilter || typeFilter || searchQuery || dateFrom || dateTo;
+
   const totalPages = Math.ceil(total / 20);
 
   return (
@@ -126,33 +161,45 @@ export default function RequestsPage() {
             Manage and track HR requests across all institutions
           </p>
         </div>
-        {canCreateRequest && (
-          <div className="relative">
+        <div className="flex items-center gap-3">
+          {(user?.role === 'ADMIN' || user?.role === 'HHRMD' || user?.role === 'HRMO' || user?.role === 'HRO') && (
             <Button
-              variant="primary"
-              onClick={() => setShowNewRequestDropdown(!showNewRequestDropdown)}
+              variant="secondary"
+              onClick={() => requestService.exportCSV({ status: statusFilter || undefined, type: typeFilter || undefined })}
               className="flex items-center gap-2"
             >
-              <Plus className="w-4 h-4" />
-              New Request
+              <Download className="w-4 h-4" />
+              Export CSV
             </Button>
-            {showNewRequestDropdown && (
-              <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-lg border border-slate-200 z-50 py-2">
-                {Object.entries(REQUEST_TYPES).map(([type, label]) => (
-                  <Link
-                    key={type}
-                    href={`/requests/new/${type}`}
-                    className="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-primary-50 hover:text-primary-600 transition-colors"
-                    onClick={() => setShowNewRequestDropdown(false)}
-                  >
-                    <FileText className="w-4 h-4" />
-                    {label}
-                  </Link>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
+          )}
+          {canCreateRequest && (
+            <div className="relative">
+              <Button
+                variant="primary"
+                onClick={() => setShowNewRequestDropdown(!showNewRequestDropdown)}
+                className="flex items-center gap-2"
+              >
+                <Plus className="w-4 h-4" />
+                New Request
+              </Button>
+              {showNewRequestDropdown && (
+                <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-lg border border-slate-200 z-50 py-2">
+                  {Object.entries(REQUEST_TYPES).map(([type, label]) => (
+                    <Link
+                      key={type}
+                      href={`/requests/new/${type}`}
+                      className="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-primary-50 hover:text-primary-600 transition-colors"
+                      onClick={() => setShowNewRequestDropdown(false)}
+                    >
+                      <FileText className="w-4 h-4" />
+                      {label}
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Stats Row */}
@@ -204,50 +251,178 @@ export default function RequestsPage() {
         </Card>
       </div>
 
-      {/* Filters */}
+      {/* Search and Filters */}
       <Card>
-        <div className="p-4 flex flex-col sm:flex-row gap-4">
-          <div className="flex-1">
-            <select
-              value={statusFilter}
-              onChange={(e) => {
-                setStatusFilter(e.target.value);
-                setPage(1);
-              }}
-              className="w-full px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-700
-                       focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500
-                       hover:border-slate-300 transition-all duration-200"
+        <div className="p-4 space-y-4">
+          {/* Search Bar */}
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search by employee name, ZanID, or request ID..."
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setPage(1);
+                }}
+                className="w-full pl-12 pr-4 py-3 rounded-xl bg-white border border-slate-200 text-slate-700
+                         focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500
+                         hover:border-slate-300 transition-all duration-200"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 p-1 rounded-full hover:bg-slate-100 text-slate-400"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+            <Button
+              variant="secondary"
+              onClick={() => setShowFilters(!showFilters)}
+              className="flex items-center gap-2"
             >
-              <option value="">All Statuses</option>
-              <option value="PENDING">Pending</option>
-              <option value="APPROVED">Approved</option>
-              <option value="REJECTED">Rejected</option>
-              <option value="RETURNED">Returned</option>
-            </select>
+              <Filter className="w-4 h-4" />
+              Filters
+              {hasActiveFilters && (
+                <span className="ml-1 px-2 py-0.5 text-xs bg-primary-500 text-white rounded-full">
+                  {[statusFilter, typeFilter, dateFrom || dateTo ? 'date' : null].filter(Boolean).length}
+                </span>
+              )}
+            </Button>
           </div>
 
-          <div className="flex-1">
-            <select
-              value={typeFilter}
-              onChange={(e) => {
-                setTypeFilter(e.target.value);
-                setPage(1);
-              }}
-              className="w-full px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-700
-                       focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500
-                       hover:border-slate-300 transition-all duration-200"
-            >
-              <option value="">All Types</option>
-              <option value="confirmation">Confirmation</option>
-              <option value="promotion">Promotion</option>
-              <option value="lwop">Leave Without Pay</option>
-              <option value="cadre-change">Cadre Change</option>
-              <option value="retirement">Retirement</option>
-              <option value="resignation">Resignation</option>
-              <option value="service-extension">Service Extension</option>
-              <option value="separation">Separation</option>
-            </select>
-          </div>
+          {/* Advanced Filters */}
+          {showFilters && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-4 border-t border-slate-100">
+              <div>
+                <label className="block text-xs font-medium text-slate-500 uppercase mb-1.5">
+                  Status
+                </label>
+                <select
+                  value={statusFilter}
+                  onChange={(e) => {
+                    setStatusFilter(e.target.value);
+                    setPage(1);
+                  }}
+                  className="w-full px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-700
+                           focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500
+                           hover:border-slate-300 transition-all duration-200"
+                >
+                  <option value="">All Statuses</option>
+                  <option value="PENDING">Pending</option>
+                  <option value="APPROVED">Approved</option>
+                  <option value="REJECTED">Rejected</option>
+                  <option value="RETURNED">Returned</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-500 uppercase mb-1.5">
+                  Request Type
+                </label>
+                <select
+                  value={typeFilter}
+                  onChange={(e) => {
+                    setTypeFilter(e.target.value);
+                    setPage(1);
+                  }}
+                  className="w-full px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-700
+                           focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500
+                           hover:border-slate-300 transition-all duration-200"
+                >
+                  <option value="">All Types</option>
+                  <option value="confirmation">Confirmation</option>
+                  <option value="promotion">Promotion</option>
+                  <option value="lwop">Leave Without Pay</option>
+                  <option value="cadre-change">Cadre Change</option>
+                  <option value="retirement">Retirement</option>
+                  <option value="resignation">Resignation</option>
+                  <option value="service-extension">Service Extension</option>
+                  <option value="separation">Separation</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-500 uppercase mb-1.5">
+                  From Date
+                </label>
+                <div className="relative">
+                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <input
+                    type="date"
+                    value={dateFrom}
+                    onChange={(e) => {
+                      setDateFrom(e.target.value);
+                      setPage(1);
+                    }}
+                    className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-700
+                             focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500
+                             hover:border-slate-300 transition-all duration-200"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-500 uppercase mb-1.5">
+                  To Date
+                </label>
+                <div className="relative">
+                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <input
+                    type="date"
+                    value={dateTo}
+                    onChange={(e) => {
+                      setDateTo(e.target.value);
+                      setPage(1);
+                    }}
+                    className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-700
+                             focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500
+                             hover:border-slate-300 transition-all duration-200"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Active Filters Display */}
+          {hasActiveFilters && (
+            <div className="flex flex-wrap items-center gap-2 pt-2">
+              <span className="text-sm text-slate-500">Active filters:</span>
+              {statusFilter && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200">
+                  Status: {statusFilter}
+                  <button onClick={() => setStatusFilter('')} className="hover:text-rose-500">
+                    <X className="w-3 h-3" />
+                  </button>
+                </span>
+              )}
+              {typeFilter && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200">
+                  Type: {REQUEST_TYPES[typeFilter]}
+                  <button onClick={() => setTypeFilter('')} className="hover:text-rose-500">
+                    <X className="w-3 h-3" />
+                  </button>
+                </span>
+              )}
+              {(dateFrom || dateTo) && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200">
+                  Date: {dateFrom || '...'} to {dateTo || '...'}
+                  <button onClick={() => { setDateFrom(''); setDateTo(''); }} className="hover:text-rose-500">
+                    <X className="w-3 h-3" />
+                  </button>
+                </span>
+              )}
+              <button
+                onClick={clearFilters}
+                className="text-sm text-rose-500 hover:text-rose-600 font-medium"
+              >
+                Clear all
+              </button>
+            </div>
+          )}
         </div>
       </Card>
 
@@ -266,7 +441,11 @@ export default function RequestsPage() {
               <FileText className="w-8 h-8 text-slate-400" />
             </div>
             <h3 className="text-lg font-medium text-slate-800 mb-1">No requests found</h3>
-            <p className="text-slate-500">Try adjusting your filters or create a new request</p>
+            <p className="text-slate-500">
+              {hasActiveFilters
+                ? 'Try adjusting your filters'
+                : 'No requests have been submitted yet'}
+            </p>
           </div>
         ) : (
           <>

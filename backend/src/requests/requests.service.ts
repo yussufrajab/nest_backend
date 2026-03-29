@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, BadRequestException, ForbiddenException 
 import { PrismaService } from '../prisma/prisma.service';
 import { Request, Prisma } from '@prisma/client';
 import { v4 as uuidv4 } from 'uuid';
+import { format } from '@fast-csv/format';
 import {
   CreateConfirmationRequestDto,
   CreatePromotionRequestDto,
@@ -89,14 +90,58 @@ export class RequestsService {
     take?: number;
     where?: Prisma.RequestWhereInput;
     orderBy?: Prisma.RequestOrderByWithRelationInput;
+    search?: string;
+    dateFrom?: Date;
+    dateTo?: Date;
   }): Promise<RequestsResult> {
-    const { skip, take, where, orderBy } = params;
+    const { skip, take, where, orderBy, search, dateFrom, dateTo } = params;
+
+    // Build search filter
+    let searchFilter: Prisma.RequestWhereInput = {};
+    if (search) {
+      searchFilter = {
+        OR: [
+          {
+            employee: {
+              name: { contains: search, mode: 'insensitive' },
+            },
+          },
+          {
+            employee: {
+              zanId: { contains: search, mode: 'insensitive' },
+            },
+          },
+          {
+            id: { contains: search, mode: 'insensitive' },
+          },
+        ],
+      };
+    }
+
+    // Build date filter
+    let dateFilter: Prisma.RequestWhereInput = {};
+    if (dateFrom || dateTo) {
+      dateFilter = {
+        createdAt: {
+          ...(dateFrom && { gte: dateFrom }),
+          ...(dateTo && { lte: dateTo }),
+        },
+      };
+    }
+
+    // Combine all filters
+    const combinedWhere: Prisma.RequestWhereInput = {
+      ...where,
+      ...searchFilter,
+      ...dateFilter,
+    };
+
     const [requests, total] = await Promise.all([
       this.prisma.request.findMany({
         skip,
         take,
-        where,
-        orderBy,
+        where: combinedWhere,
+        orderBy: orderBy || { createdAt: 'desc' },
         include: {
           employee: true,
           submittedBy: true,
@@ -111,7 +156,7 @@ export class RequestsService {
           separation: true,
         },
       }),
-      this.prisma.request.count({ where }),
+      this.prisma.request.count({ where: combinedWhere }),
     ]);
     return { requests, total };
   }
@@ -133,6 +178,74 @@ export class RequestsService {
       throw new NotFoundException(`Request with ID ${id} not found`);
     }
     return this.prisma.request.delete({ where: { id } });
+  }
+
+  // ==================== EXPORT FUNCTIONALITY ====================
+
+  async exportRequestsToCSV(where?: Prisma.RequestWhereInput): Promise<Buffer> {
+    const requests = await this.prisma.request.findMany({
+      where,
+      include: {
+        employee: {
+          select: {
+            name: true,
+            zanId: true,
+            cadre: true,
+            ministry: true,
+            status: true,
+          },
+        },
+        submittedBy: {
+          select: {
+            name: true,
+            role: true,
+          },
+        },
+        confirmation: true,
+        promotion: true,
+        lwop: true,
+        cadreChange: true,
+        retirement: true,
+        resignation: true,
+        serviceExtension: true,
+        separation: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    // Format data for CSV
+    const rows = requests.map((req) => {
+      // Determine request type
+      let requestType = 'Unknown';
+      if (req.confirmation) requestType = 'Confirmation';
+      else if (req.promotion) requestType = 'Promotion';
+      else if (req.lwop) requestType = 'LWOP';
+      else if (req.cadreChange) requestType = 'Cadre Change';
+      else if (req.retirement) requestType = 'Retirement';
+      else if (req.resignation) requestType = 'Resignation';
+      else if (req.serviceExtension) requestType = 'Service Extension';
+      else if (req.separation) requestType = 'Separation';
+
+      return {
+        'Request ID': req.id,
+        'Request Type': requestType,
+        'Employee Name': req.employee.name,
+        'Employee ZanID': req.employee.zanId,
+        'Employee Cadre': req.employee.cadre || 'N/A',
+        'Ministry': req.employee.ministry || 'N/A',
+        'Status': req.status,
+        'Review Stage': req.reviewStage,
+        'Submitted By': req.submittedBy.name,
+        'Submitter Role': req.submittedBy.role,
+        'Created At': formatDate(req.createdAt),
+        'Updated At': formatDate(req.updatedAt),
+        'Employee Status': req.employee.status || 'N/A',
+      };
+    });
+
+    // Generate CSV
+    const csvBuffer = await generateCSV(rows);
+    return csvBuffer;
   }
 
   // ==================== CONFIRMATION REQUESTS ====================
@@ -395,4 +508,40 @@ export class RequestsService {
       });
     }
   }
+}
+
+// Helper functions for CSV export
+function formatDate(date: Date): string {
+  return new Date(date).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+async function generateCSV(rows: any[]): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    const csvStream = format({ headers: true });
+
+    csvStream.on('data', (chunk: Buffer) => {
+      chunks.push(chunk);
+    });
+
+    csvStream.on('end', () => {
+      resolve(Buffer.concat(chunks));
+    });
+
+    csvStream.on('error', (err: Error) => {
+      reject(err);
+    });
+
+    for (const row of rows) {
+      csvStream.write(row);
+    }
+
+    csvStream.end();
+  });
 }

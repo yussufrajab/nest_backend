@@ -1,6 +1,15 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
+import * as nodemailer from 'nodemailer';
+import {
+  getRequestApprovedEmail,
+  getRequestRejectedEmail,
+  getRequestSentBackEmail,
+  getComplaintResolvedEmail,
+  getPasswordResetEmail,
+  getRequestSubmittedEmail,
+} from './templates';
 
 export interface NotificationDto {
   userId: string;
@@ -10,21 +19,46 @@ export interface NotificationDto {
 
 @Injectable()
 export class NotificationsService {
-  private smtpConfig: any;
+  private transporter: nodemailer.Transporter;
+  private readonly logger = new Logger(NotificationsService.name);
+  private emailEnabled: boolean;
 
   constructor(
     private prisma: PrismaService,
     private configService: ConfigService,
   ) {
-    this.smtpConfig = {
-      host: this.configService.get('SMTP_HOST', 'smtp.gmail.com'),
-      port: this.configService.get('SMTP_PORT', 587),
-      secure: this.configService.get('SMTP_SECURE', 'false') === 'true',
-      auth: {
-        user: this.configService.get('SMTP_USER'),
-        pass: this.configService.get('SMTP_PASS'),
-      },
-    };
+    this.emailEnabled = this.configService.get('SMTP_USER') !== undefined &&
+                       this.configService.get('SMTP_USER') !== 'your-email@gmail.com';
+
+    if (this.emailEnabled) {
+      this.transporter = nodemailer.createTransport({
+        host: this.configService.get('SMTP_HOST', 'smtp.gmail.com'),
+        port: this.configService.get('SMTP_PORT', 587),
+        secure: this.configService.get('SMTP_SECURE', 'false') === 'true',
+        auth: {
+          user: this.configService.get('SMTP_USER'),
+          pass: this.configService.get('SMTP_PASS'),
+        },
+      });
+
+      // Verify connection configuration
+      this.verifyConnection();
+    } else {
+      this.logger.warn('Email notifications disabled - SMTP credentials not configured');
+    }
+  }
+
+  /**
+   * Verify SMTP connection
+   */
+  private async verifyConnection(): Promise<void> {
+    try {
+      await this.transporter.verify();
+      this.logger.log('SMTP connection verified successfully');
+    } catch (error) {
+      this.logger.error('SMTP connection failed:', error.message);
+      this.emailEnabled = false;
+    }
   }
 
   /**
@@ -55,7 +89,7 @@ export class NotificationsService {
     await this.createNotification({ userId, message, link });
 
     // Send email if enabled
-    if (sendEmail) {
+    if (sendEmail && this.emailEnabled) {
       await this.sendEmailNotification(userId, message, link);
     }
   }
@@ -74,7 +108,27 @@ export class NotificationsService {
     const message = `New ${requestType} request for ${employeeName} from ${institutionName}`;
     const link = `/requests/${requestType.toLowerCase()}/${requestId}`;
 
-    await this.sendNotification(approverId, message, link);
+    await this.sendNotification(approverId, message, link, false);
+
+    // Send email
+    if (this.emailEnabled) {
+      const approver = await this.getUserEmail(approverId);
+      if (approver) {
+        const { subject, html } = getRequestSubmittedEmail({
+          requestType,
+          requestId,
+          employeeName,
+          submittedBy: submittedByName,
+          institution: institutionName,
+          link,
+        });
+        await this.sendEmail({
+          to: approver,
+          subject,
+          html,
+        });
+      }
+    }
   }
 
   /**
@@ -93,16 +147,19 @@ export class NotificationsService {
 
     // Send email
     const email = await this.getUserEmail(hroId);
-    if (email) {
+    if (email && this.emailEnabled) {
+      const { subject, html } = getRequestApprovedEmail({
+        requestType,
+        requestId,
+        employeeName,
+        approvedBy: 'HR Management',
+        approvedDate: new Date().toLocaleDateString(),
+        link,
+      });
       await this.sendEmail({
         to: email,
-        subject: `[CSMS] Request Approved - ${requestType} Request ${requestId}`,
-        template: 'request-approved',
-        data: {
-          requestType,
-          requestId,
-          employeeName,
-        },
+        subject,
+        html,
       });
     }
   }
@@ -124,17 +181,19 @@ export class NotificationsService {
 
     // Send email
     const email = await this.getUserEmail(hroId);
-    if (email) {
+    if (email && this.emailEnabled) {
+      const { subject, html } = getRequestRejectedEmail({
+        requestType,
+        requestId,
+        employeeName,
+        rejectedBy: 'HR Management',
+        rejectionReason,
+        link,
+      });
       await this.sendEmail({
         to: email,
-        subject: `[CSMS] Request Rejected - ${requestType} Request ${requestId}`,
-        template: 'request-rejected',
-        data: {
-          requestType,
-          requestId,
-          employeeName,
-          rejectionReason,
-        },
+        subject,
+        html,
       });
     }
   }
@@ -156,17 +215,19 @@ export class NotificationsService {
 
     // Send email
     const email = await this.getUserEmail(hroId);
-    if (email) {
+    if (email && this.emailEnabled) {
+      const { subject, html } = getRequestSentBackEmail({
+        requestType,
+        requestId,
+        employeeName,
+        sentBackBy: 'HR Management',
+        instructions,
+        link,
+      });
       await this.sendEmail({
         to: email,
-        subject: `[CSMS] Request Needs Rectification - ${requestType} Request ${requestId}`,
-        template: 'request-sent-back',
-        data: {
-          requestType,
-          requestId,
-          employeeName,
-          instructions,
-        },
+        subject,
+        html,
       });
     }
   }
@@ -178,11 +239,52 @@ export class NotificationsService {
     employeeId: string,
     complaintId: string,
     status: string,
+    subject?: string,
+    resolution?: string,
   ): Promise<void> {
     const message = `Your complaint has been ${status.toLowerCase()}`;
     const link = `/complaints/${complaintId}`;
 
     await this.sendNotification(employeeId, message, link);
+
+    // Send email
+    const email = await this.getUserEmail(employeeId);
+    if (email && this.emailEnabled) {
+      const { subject: emailSubject, html } = getComplaintResolvedEmail({
+        complaintId,
+        subject: subject || 'Complaint',
+        status,
+        resolution: resolution || `Your complaint has been ${status.toLowerCase()}.`,
+        link,
+      });
+      await this.sendEmail({
+        to: email,
+        subject: emailSubject,
+        html,
+      });
+    }
+  }
+
+  /**
+   * Send password reset OTP email
+   */
+  async sendPasswordResetEmail(
+    userId: string,
+    otp: string,
+    expiryMinutes: number = 15,
+  ): Promise<void> {
+    const email = await this.getUserEmail(userId);
+    if (email && this.emailEnabled) {
+      const { subject, html } = getPasswordResetEmail({
+        otp,
+        expiryMinutes,
+      });
+      await this.sendEmail({
+        to: email,
+        subject,
+        html,
+      });
+    }
   }
 
   /**
@@ -244,17 +346,33 @@ export class NotificationsService {
   }
 
   /**
-   * Send email (placeholder - implement with nodemailer or similar)
+   * Send email using nodemailer
    */
   private async sendEmail(params: {
-    to: string | null;
+    to: string;
     subject: string;
-    template: string;
-    data: any;
+    html: string;
   }): Promise<void> {
-    // TODO: Implement with nodemailer or SMTP service
-    // For now, just log the email
-    console.log(`[Email] To: ${params.to}, Subject: ${params.subject}`);
+    if (!this.emailEnabled) {
+      this.logger.log(`[Email Disabled] Would send to: ${params.to}, Subject: ${params.subject}`);
+      return;
+    }
+
+    try {
+      const from = this.configService.get('EMAIL_FROM', 'CSMS <noreply@csms.gov.zm>');
+
+      await this.transporter.sendMail({
+        from,
+        to: params.to,
+        subject: params.subject,
+        html: params.html,
+      });
+
+      this.logger.log(`Email sent successfully to: ${params.to}, Subject: ${params.subject}`);
+    } catch (error) {
+      this.logger.error(`Failed to send email to ${params.to}:`, error.message);
+      throw error;
+    }
   }
 
   /**
@@ -266,8 +384,12 @@ export class NotificationsService {
     link?: string,
   ): Promise<void> {
     const email = await this.getUserEmail(userId);
-    if (email) {
-      console.log(`[Email] To: ${email}, Message: ${message}`);
+    if (email && this.emailEnabled) {
+      await this.sendEmail({
+        to: email,
+        subject: '[CSMS] Notification',
+        html: `<p>${message}</p>${link ? `<p><a href="${link}">View Details</a></p>` : ''}`,
+      });
     }
   }
 
@@ -280,5 +402,12 @@ export class NotificationsService {
       select: { email: true },
     });
     return user?.email || null;
+  }
+
+  /**
+   * Check if email is enabled and configured
+   */
+  isEmailEnabled(): boolean {
+    return this.emailEnabled;
   }
 }

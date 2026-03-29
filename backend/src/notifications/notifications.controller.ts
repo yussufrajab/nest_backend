@@ -6,8 +6,12 @@ import {
   Param,
   Query,
   UseGuards,
+  Post,
+  Body,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../shared/guards/jwt-auth.guard';
+import { RolesGuard } from '../shared/guards/roles.guard';
+import { Roles } from '../shared/decorators/roles.decorator';
 import { NotificationsService } from './notifications.service';
 import { CurrentUser } from '../shared/decorators/user.decorator';
 
@@ -54,5 +58,39 @@ export class NotificationsController {
   async deleteNotification(@Param('id') id: string) {
     await this.notificationsService.deleteNotification(id);
     return { success: true };
+  }
+
+  /**
+   * Test endpoint for email functionality (admin only)
+   */
+  @Post('test-email')
+  @UseGuards(RolesGuard)
+  @Roles('Admin')
+  async testEmail(
+    @CurrentUser() user: any,
+    @Body('email') email?: string,
+  ) {
+    const testEmail = email || user.email;
+    if (!testEmail) {
+      return { success: false, message: 'No email provided' };
+    }
+
+    await this.notificationsService.sendPasswordResetEmail(user.id, '123456', 15);
+
+    return {
+      success: true,
+      message: `Test email sent to ${testEmail}`,
+      emailEnabled: this.notificationsService.isEmailEnabled(),
+    };
+  }
+
+  /**
+   * Check email configuration status
+   */
+  @Get('email-status')
+  emailStatus() {
+    return {
+      enabled: this.notificationsService.isEmailEnabled(),
+    };
   }
 }

@@ -7,11 +7,13 @@ import {
   Body,
   Param,
   Query,
+  Res,
   UseGuards,
   UseInterceptors,
   UploadedFile,
   BadRequestException,
 } from '@nestjs/common';
+import type { Response } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { RequestsService, RequestWithRelations, RequestsResult } from './requests.service';
 import { Request, Prisma } from '@prisma/client';
@@ -55,6 +57,9 @@ export class RequestsController {
     @Query('status') status?: string,
     @Query('type') type?: string,
     @Query('employeeId') employeeId?: string,
+    @Query('search') search?: string,
+    @Query('dateFrom') dateFrom?: string,
+    @Query('dateTo') dateTo?: string,
     @Query('orderBy') orderBy?: Prisma.RequestOrderByWithRelationInput,
   ): Promise<RequestsResult> {
     const where: Prisma.RequestWhereInput = {};
@@ -80,12 +85,51 @@ export class RequestsController {
       }
     }
 
+    // Parse dates
+    const parsedDateFrom = dateFrom ? new Date(dateFrom) : undefined;
+    const parsedDateTo = dateTo ? new Date(dateTo) : undefined;
+
     return this.requestsService.getRequests({
       skip: skip ? parseInt(skip as any, 10) : undefined,
       take: take ? parseInt(take as any, 10) : undefined,
       where,
       orderBy,
+      search,
+      dateFrom: parsedDateFrom,
+      dateTo: parsedDateTo,
     });
+  }
+
+  @Get('export/csv')
+  @Roles('ADMIN', 'HHRMD', 'HRMO', 'HRO')
+  async exportCSV(
+    @Query('status') status?: string,
+    @Query('type') type?: string,
+    @Res() res?: Response,
+  ) {
+    const where: Prisma.RequestWhereInput = {};
+    if (status) where.status = { equals: status };
+
+    if (type) {
+      const typeRelationMap: Record<string, Prisma.RequestWhereInput> = {
+        confirmation: { confirmation: { isNot: null } },
+        promotion: { promotion: { isNot: null } },
+        lwop: { lwop: { isNot: null } },
+        'cadre-change': { cadreChange: { isNot: null } },
+        retirement: { retirement: { isNot: null } },
+        resignation: { resignation: { isNot: null } },
+        'service-extension': { serviceExtension: { isNot: null } },
+        separation: { separation: { isNot: null } },
+      };
+      const typeFilter = typeRelationMap[type.toLowerCase()];
+      if (typeFilter) Object.assign(where, typeFilter);
+    }
+
+    const csvBuffer = await this.requestsService.exportRequestsToCSV(where);
+
+    res?.setHeader('Content-Type', 'text/csv');
+    res?.setHeader('Content-Disposition', `attachment; filename="requests-${new Date().toISOString().split('T')[0]}.csv"`);
+    res?.send(csvBuffer);
   }
 
   @Get(':id')

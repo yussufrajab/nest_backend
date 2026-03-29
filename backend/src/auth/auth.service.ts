@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import * as bcrypt from 'bcryptjs';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
@@ -17,6 +18,7 @@ export class AuthService {
   constructor(
     private prisma: PrismaService,
     private jwtService: JwtService,
+    private notificationsService: NotificationsService,
   ) {}
 
   async validateUser(username: string, password: string): Promise<any> {
@@ -165,6 +167,10 @@ export class AuthService {
       },
     });
 
+    // Send password reset email
+    await this.notificationsService.sendPasswordResetEmail(user.id, otp, 15);
+
+    // Only return OTP in development mode
     if (process.env.NODE_ENV !== 'production') {
       return {
         message: 'OTP sent successfully',

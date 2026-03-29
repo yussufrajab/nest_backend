@@ -7,17 +7,23 @@ import {
   Users,
   FileText,
   AlertTriangle,
-  Briefcase,
+  Building2,
   ArrowRight,
   Clock,
   CheckCircle,
   TrendingUp,
 } from 'lucide-react';
-import { dashboardService, DashboardStats } from '../../../services/dashboardService';
+import { dashboardService, DashboardData } from '../../../services/dashboardService';
 import { StatCard } from '../../../components/ui/StatCard';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../../../components/ui/Card';
 import { Button } from '../../../components/ui/Button';
-import { Badge } from '../../../components/ui/Badge';
+import {
+  RequestStatsChart,
+  RequestTrendsChart,
+  EmployeeStatsWidget,
+  InstitutionStatsWidget,
+  RecentActivities,
+} from '../../../components/dashboard';
 
 const roleDisplayNames: Record<string, string> = {
   ADMIN: 'System Administrator',
@@ -31,26 +37,17 @@ const roleDisplayNames: Record<string, string> = {
   HRRP: 'Human Resources Reporting Person',
 };
 
-const recentActivity = [
-  { id: 1, type: 'confirmation', employee: 'John Doe', status: 'pending', time: '2 hours ago' },
-  { id: 2, type: 'promotion', employee: 'Jane Smith', status: 'approved', time: '5 hours ago' },
-  { id: 3, type: 'retirement', employee: 'Bob Johnson', status: 'approved', time: '1 day ago' },
-];
-
 export default function DashboardPage() {
   const { user } = useAuth();
-  const [stats, setStats] = useState<DashboardStats>({
-    totalEmployees: 0,
-    pendingRequests: 0,
-    openComplaints: 0,
-  });
+  const [data, setData] = useState<DashboardData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [chartType, setChartType] = useState<'bar' | 'pie'>('bar');
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const statsData = await dashboardService.getStats();
-        setStats(statsData);
+        const dashboardData = await dashboardService.getDashboardData();
+        setData(dashboardData);
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
       } finally {
@@ -64,6 +61,11 @@ export default function DashboardPage() {
   }, [user]);
 
   if (!user) return null;
+
+  // Calculate total requests by status
+  const totalRequests = data?.requestStatsByType?.reduce((sum, item) => sum + item.count, 0) || 0;
+  const approvedRequests = data?.requestStatsByType?.reduce((sum, item) => sum + item.approved, 0) || 0;
+  const rejectedRequests = data?.requestStatsByType?.reduce((sum, item) => sum + item.rejected, 0) || 0;
 
   return (
     <div className="space-y-8">
@@ -88,120 +90,118 @@ export default function DashboardPage() {
       </div>
 
       {/* Stats Row */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard
           title="Total Employees"
-          value={isLoading ? '...' : stats.totalEmployees}
+          value={isLoading ? '...' : data?.totalEmployees || 0}
           icon={Users}
           color="blue"
-          trend={{ value: 12, isPositive: true }}
         />
         <StatCard
           title="Pending Requests"
-          value={isLoading ? '...' : stats.pendingRequests}
+          value={isLoading ? '...' : data?.pendingRequests || 0}
           icon={FileText}
           color="amber"
         />
         <StatCard
           title="Open Complaints"
-          value={isLoading ? '...' : stats.openComplaints}
+          value={isLoading ? '...' : data?.openComplaints || 0}
           icon={AlertTriangle}
           color="rose"
+        />
+        <StatCard
+          title="Institutions"
+          value={isLoading ? '...' : data?.totalInstitutions || 0}
+          icon={Building2}
+          color="purple"
         />
       </div>
 
       {/* Main Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Quick Actions */}
+        {/* Request Trends Chart */}
         <Card className="lg:col-span-2">
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle>Quick Actions</CardTitle>
-                <CardDescription>Frequently used actions for your role</CardDescription>
+                <CardTitle>Request Trends</CardTitle>
+                <CardDescription>Requests submitted over the last 30 days</CardDescription>
+              </div>
+              <div className="flex items-center gap-2">
+                <TrendingUp className="w-4 h-4 text-slate-400" />
               </div>
             </div>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              <Link href="/employees">
-                <div className="group flex flex-col items-center gap-3 p-4 rounded-2xl border border-slate-200 hover:border-primary-300 hover:bg-primary-50/50 transition-all duration-200 cursor-pointer">
-                  <div className="p-3 rounded-xl bg-blue-50 text-blue-600 group-hover:bg-blue-100 transition-colors">
-                    <Users className="w-5 h-5" />
-                  </div>
-                  <span className="text-sm font-medium text-slate-700">View Employees</span>
-                </div>
-              </Link>
-
-              <Link href="/requests">
-                <div className="group flex flex-col items-center gap-3 p-4 rounded-2xl border border-slate-200 hover:border-primary-300 hover:bg-primary-50/50 transition-all duration-200 cursor-pointer">
-                  <div className="p-3 rounded-xl bg-amber-50 text-amber-600 group-hover:bg-amber-100 transition-colors">
-                    <FileText className="w-5 h-5" />
-                  </div>
-                  <span className="text-sm font-medium text-slate-700">New Request</span>
-                </div>
-              </Link>
-
-              <Link href="/complaints">
-                <div className="group flex flex-col items-center gap-3 p-4 rounded-2xl border border-slate-200 hover:border-primary-300 hover:bg-primary-50/50 transition-all duration-200 cursor-pointer">
-                  <div className="p-3 rounded-xl bg-rose-50 text-rose-600 group-hover:bg-rose-100 transition-colors">
-                    <AlertTriangle className="w-5 h-5" />
-                  </div>
-                  <span className="text-sm font-medium text-slate-700">Complaints</span>
-                </div>
-              </Link>
-
-              <Link href="/reports">
-                <div className="group flex flex-col items-center gap-3 p-4 rounded-2xl border border-slate-200 hover:border-primary-300 hover:bg-primary-50/50 transition-all duration-200 cursor-pointer">
-                  <div className="p-3 rounded-xl bg-purple-50 text-purple-600 group-hover:bg-purple-100 transition-colors">
-                    <Briefcase className="w-5 h-5" />
-                  </div>
-                  <span className="text-sm font-medium text-slate-700">Reports</span>
-                </div>
-              </Link>
-            </div>
+            <RequestTrendsChart data={data?.requestTrends || []} />
           </CardContent>
         </Card>
 
-        {/* Recent Activity */}
+        {/* Recent Activities */}
         <Card>
           <CardHeader>
             <CardTitle>Recent Activity</CardTitle>
-            <CardDescription>Latest updates from today</CardDescription>
+            <CardDescription>Latest request submissions</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {recentActivity.map((activity) => (
-                <div key={activity.id} className="flex items-start gap-3 p-3 rounded-xl bg-slate-50">
-                  <div className="mt-0.5">
-                    {activity.status === 'pending' ? (
-                      <Clock className="w-4 h-4 text-amber-500" />
-                    ) : (
-                      <CheckCircle className="w-4 h-4 text-emerald-500" />
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm text-slate-700 truncate">
-                      <span className="font-medium">{activity.employee}</span>
-                      {' '}<span className="text-slate-500">• {activity.type} request</span>
-                    </p>
-                    <div className="flex items-center gap-2 mt-1">
-                      <Badge variant={activity.status as any} className="text-[10px]">
-                        {activity.status}
-                      </Badge>
-                      <span className="text-xs text-slate-400">{activity.time}</span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-
+            <RecentActivities activities={data?.recentActivities || []} />
             <Link href="/requests">
               <Button variant="ghost" className="w-full mt-4">
                 View All Activity
                 <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
             </Link>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Second Row */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Request Stats by Type */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Requests by Type</CardTitle>
+                <CardDescription>Distribution of requests across all types</CardDescription>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setChartType('bar')}
+                  className={`px-3 py-1 text-xs rounded-lg transition-colors ${
+                    chartType === 'bar'
+                      ? 'bg-primary-100 text-primary-600'
+                      : 'text-slate-500 hover:bg-slate-100'
+                  }`}
+                >
+                  Bar
+                </button>
+                <button
+                  onClick={() => setChartType('pie')}
+                  className={`px-3 py-1 text-xs rounded-lg transition-colors ${
+                    chartType === 'pie'
+                      ? 'bg-primary-100 text-primary-600'
+                      : 'text-slate-500 hover:bg-slate-100'
+                  }`}
+                >
+                  Pie
+                </button>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <RequestStatsChart data={data?.requestStatsByType || []} chartType={chartType} />
+          </CardContent>
+        </Card>
+
+        {/* Employee Distribution */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Employee Status</CardTitle>
+            <CardDescription>Distribution by employment status</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <EmployeeStatsWidget data={data?.employeeDistribution || []} />
           </CardContent>
         </Card>
       </div>
@@ -229,7 +229,7 @@ export default function DashboardPage() {
                 <Clock className="w-5 h-5" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-slate-800">24</p>
+                <p className="text-2xl font-bold text-slate-800">{isLoading ? '...' : data?.pendingRequests || 0}</p>
                 <p className="text-sm text-slate-600">Pending</p>
               </div>
             </div>
@@ -239,7 +239,7 @@ export default function DashboardPage() {
                 <CheckCircle className="w-5 h-5" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-slate-800">156</p>
+                <p className="text-2xl font-bold text-slate-800">{isLoading ? '...' : approvedRequests}</p>
                 <p className="text-sm text-slate-600">Approved</p>
               </div>
             </div>
@@ -249,7 +249,7 @@ export default function DashboardPage() {
                 <AlertTriangle className="w-5 h-5" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-slate-800">8</p>
+                <p className="text-2xl font-bold text-slate-800">{isLoading ? '...' : rejectedRequests}</p>
                 <p className="text-sm text-slate-600">Rejected</p>
               </div>
             </div>
@@ -259,13 +259,26 @@ export default function DashboardPage() {
                 <TrendingUp className="w-5 h-5" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-slate-800">312</p>
+                <p className="text-2xl font-bold text-slate-800">{isLoading ? '...' : totalRequests}</p>
                 <p className="text-sm text-slate-600">Total</p>
               </div>
             </div>
           </div>
         </CardContent>
       </Card>
+
+      {/* Institution Stats */}
+      {data?.institutionStats && data.institutionStats.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Top Institutions</CardTitle>
+            <CardDescription>Institutions with most requests</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <InstitutionStatsWidget data={data.institutionStats} />
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
