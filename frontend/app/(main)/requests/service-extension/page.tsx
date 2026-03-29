@@ -53,7 +53,7 @@ export default function ServiceExtensionRequestsPage() {
           {canCreateRequest && (
             <button
               onClick={() => router.push('/requests/service-extension/new')}
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
+              className="bg-gradient-to-br from-primary-600 to-accent-500 text-white px-4 py-2 rounded-lg hover:from-primary-700 hover:to-accent-600 transition shadow-md shadow-primary-500/20"
             >
               + New Service Extension Request
             </button>

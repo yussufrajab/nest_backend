@@ -104,7 +104,7 @@ export default function EmployeeDetailPage() {
                 <div className="mt-6 space-y-3">
                   <Link
                     href={`/employees/${employee.id}/edit`}
-                    className="block w-full bg-blue-600 text-white text-center px-4 py-2 rounded-lg hover:bg-blue-700 transition"
+                    className="block w-full bg-gradient-to-br from-primary-600 to-accent-500 text-white text-center px-4 py-2 rounded-lg hover:from-primary-700 hover:to-accent-600 transition shadow-md shadow-primary-500/20"
                   >
                     Edit Profile
                   </Link>

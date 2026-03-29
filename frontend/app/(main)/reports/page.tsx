@@ -130,7 +130,7 @@ export default function ReportsPage() {
             <button
               onClick={handleGenerate}
               disabled={loading || !selectedType}
-              className="w-full px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 font-medium"
+              className="w-full px-6 py-3 bg-gradient-to-br from-primary-600 to-accent-500 text-white rounded-lg hover:from-primary-700 hover:to-accent-600 transition disabled:opacity-50 font-medium shadow-md shadow-primary-500/20"
             >
               {loading ? 'Generating...' : 'Generate Report'}
             </button>

@@ -263,7 +263,7 @@ export default function ComplaintDetailPage() {
                       <button
                         type="submit"
                         disabled={responding}
-                        className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
+                        className="w-full px-4 py-2 bg-gradient-to-br from-primary-600 to-accent-500 text-white rounded-lg hover:from-primary-700 hover:to-accent-600 transition disabled:opacity-50 shadow-md shadow-primary-500/20"
                       >
                         {responding ? 'Submitting...' : 'Submit Response'}
                       </button>
@@ -283,7 +283,7 @@ export default function ComplaintDetailPage() {
                   <button
                     onClick={handleApprove}
                     disabled={responding}
-                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition disabled:opacity-50"
+                    className="px-4 py-2 bg-gradient-to-br from-primary-600 to-accent-500 text-white rounded-lg hover:from-primary-700 hover:to-accent-600 transition disabled:opacity-50 shadow-md shadow-primary-500/20"
                   >
                     {responding ? 'Processing...' : 'Approve Response'}
                   </button>

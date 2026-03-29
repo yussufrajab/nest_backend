@@ -17,7 +17,7 @@ export default function AdminPage() {
           <p className="text-gray-600 mt-2">You don't have permission to access this page.</p>
           <button
             onClick={() => router.push('/dashboard')}
-            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+            className="mt-4 px-4 py-2 bg-gradient-to-br from-primary-600 to-accent-500 text-white rounded-lg hover:from-primary-700 hover:to-accent-600 transition shadow-md shadow-primary-500/20"
           >
             Go to Dashboard
           </button>

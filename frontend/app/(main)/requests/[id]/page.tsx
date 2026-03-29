@@ -365,7 +365,7 @@ export default function RequestDetailPage() {
                   <button
                     onClick={handleApprove}
                     disabled={reviewing}
-                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition disabled:opacity-50"
+                    className="px-4 py-2 bg-gradient-to-br from-primary-600 to-accent-500 text-white rounded-lg hover:from-primary-700 hover:to-accent-600 transition disabled:opacity-50 shadow-md shadow-primary-500/20"
                   >
                     {reviewing ? 'Processing...' : 'Approve'}
                   </button>

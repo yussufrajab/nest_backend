@@ -94,7 +94,7 @@ export default function InstitutionsPage() {
           </div>
           <Link
             href="/admin/institutions/new"
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
+            className="bg-gradient-to-br from-primary-600 to-accent-500 text-white px-4 py-2 rounded-lg hover:from-primary-700 hover:to-accent-600 transition shadow-md shadow-primary-500/20"
           >
             Add Institution
           </Link>
@@ -114,7 +114,7 @@ export default function InstitutionsPage() {
             </div>
             <button
               type="submit"
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+              className="px-6 py-2 bg-gradient-to-br from-primary-600 to-accent-500 text-white rounded-lg hover:from-primary-700 hover:to-accent-600 transition shadow-md shadow-primary-500/20"
             >
               Search
             </button>
