@@ -18,6 +18,14 @@ import {
   ChevronDown,
   LogOut,
   Shield,
+  Award,
+  TrendingUp,
+  CalendarOff,
+  ArrowRightLeft,
+  Briefcase,
+  DoorOpen,
+  CalendarPlus,
+  UserMinus,
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 
@@ -28,14 +36,14 @@ const Sidebar = () => {
   const [adminMenuOpen, setAdminMenuOpen] = useState(false);
 
   const requestSubMenu = [
-    { title: 'Confirmation', href: '/requests/confirmation', roles: ['HRO', 'HRMO', 'HHRMD', 'HRRP'] },
-    { title: 'Promotion', href: '/requests/promotion', roles: ['HRO', 'HRMO', 'HHRMD', 'HRRP'] },
-    { title: 'LWOP', href: '/requests/lwop', roles: ['HRO', 'HRMO', 'HHRMD', 'HRRP'] },
-    { title: 'Cadre Change', href: '/requests/cadre-change', roles: ['HRO', 'HRMO', 'HHRMD', 'HRRP'] },
-    { title: 'Retirement', href: '/requests/retirement', roles: ['HRO', 'HRMO', 'HHRMD', 'HRRP'] },
-    { title: 'Resignation', href: '/requests/resignation', roles: ['HRO', 'HRMO', 'HHRMD', 'HRRP'] },
-    { title: 'Service Extension', href: '/requests/service-extension', roles: ['HRO', 'HRMO', 'HHRMD', 'HRRP'] },
-    { title: 'Separation', href: '/requests/separation', roles: ['HRO', 'HRMO', 'HHRMD', 'HRRP', 'DO'] },
+    { title: 'Confirmation', href: '/requests/confirmation', roles: ['HRO', 'HRMO', 'HHRMD', 'HRRP'], icon: Award },
+    { title: 'Promotion', href: '/requests/promotion', roles: ['HRO', 'HRMO', 'HHRMD', 'HRRP'], icon: TrendingUp },
+    { title: 'LWOP', href: '/requests/lwop', roles: ['HRO', 'HRMO', 'HHRMD', 'HRRP'], icon: CalendarOff },
+    { title: 'Cadre Change', href: '/requests/cadre-change', roles: ['HRO', 'HRMO', 'HHRMD', 'HRRP'], icon: ArrowRightLeft },
+    { title: 'Retirement', href: '/requests/retirement', roles: ['HRO', 'HRMO', 'HHRMD', 'HRRP'], icon: Briefcase },
+    { title: 'Resignation', href: '/requests/resignation', roles: ['HRO', 'HRMO', 'HHRMD', 'HRRP'], icon: DoorOpen },
+    { title: 'Service Extension', href: '/requests/service-extension', roles: ['HRO', 'HRMO', 'HHRMD', 'HRRP'], icon: CalendarPlus },
+    { title: 'Separation', href: '/requests/separation', roles: ['HRO', 'HRMO', 'HHRMD', 'HRRP', 'DO'], icon: UserMinus },
   ];
 
   const mainMenu = [
@@ -141,24 +149,26 @@ const Sidebar = () => {
                 const visibleChildren = item.children.filter(
                   (child: any) => canViewMenuItem(child.roles)
                 );
+                const parentActive = isActive(item.href) || hasActiveChild;
                 return (
                   <li key={item.href}>
                     <button
                       onClick={() => setRequestsMenuOpen(!requestsMenuOpen)}
                       className={cn(
                         'w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl transition-all duration-200',
-                        isActive(item.href) || hasActiveChild
+                        parentActive
                           ? 'text-primary-600 bg-primary-50 font-medium shadow-sm shadow-primary-500/10'
                           : 'text-slate-600 hover:text-primary-600 hover:bg-slate-50'
                       )}
                     >
                       <div className="flex items-center gap-3">
-                        <Icon className="w-5 h-5" />
+                        <Icon className={cn('w-5 h-5', parentActive ? 'text-accent-500' : 'text-primary-400')} />
                         <span>{item.title}</span>
                       </div>
                       <ChevronDown
                         className={cn(
                           'w-4 h-4 transition-transform duration-200',
+                          parentActive ? 'text-accent-500' : 'text-primary-400',
                           requestsMenuOpen && 'rotate-180'
                         )}
                       />
@@ -169,38 +179,45 @@ const Sidebar = () => {
                         requestsMenuOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
                       )}
                     >
-                      {visibleChildren.map((child: any) => (
-                        <li key={child.href}>
-                          <Link
-                            href={child.href}
-                            className={cn(
-                              'flex items-center gap-2 px-3 py-2 text-sm rounded-lg transition-all duration-200',
-                              isActive(child.href)
-                                ? 'text-primary-600 bg-primary-50 font-medium'
-                                : 'text-slate-500 hover:text-primary-600 hover:bg-slate-50'
-                            )}
-                          >
-                            <ChevronRight className="w-3 h-3" />
-                            {child.title}
-                          </Link>
-                        </li>
-                      ))}
+                      {visibleChildren.map((child: any) => {
+                        const ChildIcon = child.icon;
+                        const active = isActive(child.href);
+                        return (
+                          <li key={child.href}>
+                            <Link
+                              href={child.href}
+                              className={cn(
+                                'flex items-center gap-2 px-3 py-2 text-sm rounded-lg transition-all duration-200',
+                                active
+                                  ? 'text-primary-600 bg-primary-50 font-medium'
+                                  : 'text-slate-500 hover:text-primary-600 hover:bg-slate-50'
+                              )}
+                            >
+                              {ChildIcon && (
+                                <ChildIcon className={cn('w-4 h-4', active ? 'text-accent-500' : 'text-primary-400')} />
+                              )}
+                              {child.title}
+                            </Link>
+                          </li>
+                        );
+                      })}
                     </ul>
                   </li>
                 );
               }
+              const mainActive = isActive(item.href);
               return (
                 <li key={item.href}>
                   <Link
                     href={item.href}
                     className={cn(
                       'flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200',
-                      isActive(item.href)
+                      mainActive
                         ? 'text-primary-600 bg-primary-50 font-medium shadow-sm shadow-primary-500/10'
                         : 'text-slate-600 hover:text-primary-600 hover:bg-slate-50'
                     )}
                   >
-                    <Icon className="w-5 h-5" />
+                    <Icon className={cn('w-5 h-5', mainActive ? 'text-accent-500' : 'text-primary-400')} />
                     <span>{item.title}</span>
                   </Link>
                 </li>
@@ -218,18 +235,19 @@ const Sidebar = () => {
             <ul className="space-y-1">
               {filteredAdminMenu.map((item) => {
                 const Icon = item.icon;
+                const adminActive = isActive(item.href);
                 return (
                   <li key={item.href}>
                     <Link
                       href={item.href}
                       className={cn(
                         'flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200',
-                        isActive(item.href)
+                        adminActive
                           ? 'text-primary-600 bg-primary-50 font-medium shadow-sm shadow-primary-500/10'
                           : 'text-slate-600 hover:text-primary-600 hover:bg-slate-50'
                       )}
                     >
-                      <Icon className="w-5 h-5" />
+                      <Icon className={cn('w-5 h-5', adminActive ? 'text-accent-500' : 'text-primary-400')} />
                       <span>{item.title}</span>
                     </Link>
                   </li>
